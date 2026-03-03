@@ -1,391 +1,589 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Refuge - Admin Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .view-enter { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  onSnapshot, 
+  updateDoc, 
+  addDoc,
+  deleteDoc,
+  query
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  signInWithCustomToken, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Calendar, 
+  Users, 
+  MapPin, 
+  Lock, 
+  Unlock, 
+  ShieldCheck, 
+  Home, 
+  Info,
+  LogOut,
+  Edit2,
+  X,
+  User,
+  Plus,
+  Trash2,
+  KeyRound,
+  Search,
+  Sparkles,
+  Send,
+  Loader2,
+  ChevronLeft,
+  Clock,
+  ArrowRight,
+  Circle,
+  Eye,
+  Filter
+} from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'refuge-glimpse-2026';
+const apiKey = ""; 
+
+const App = () => {
+  const [fbUser, setFbUser] = useState(null);
+  const [appUser, setAppUser] = useState(null);
+  const [view, setView] = useState('schedule'); 
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showExpiredEvents, setShowExpiredEvents] = useState(false);
+
+  // Firestore Data State
+  const [attendees, setAttendees] = useState([]);
+  const [schedule, setSchedule] = useState([]);
+  
+  // Login UI State
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAttendeeLogin, setShowAttendeeLogin] = useState(false);
+  const [loginInput, setLoginInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  // Editing State
+  const [isEditingAttendee, setIsEditingAttendee] = useState(null); 
+  const [editUserForm, setEditUserForm] = useState({ name: "", team: "", room: "" });
+  
+  const [isEditingEvent, setIsEditingEvent] = useState(null); 
+  const [editEventForm, setEditEventForm] = useState({ 
+    title: "", 
+    timeLabel: "", 
+    startTime: "", 
+    endTime: "", 
+    location: "" 
+  });
+
+  // Directory Filter State
+  const [directoryFilter, setDirectoryFilter] = useState({ type: null, value: null });
+
+  // 1. Authentication Lifecycle
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
         }
-    </style>
-</head>
-<body class="bg-slate-900">
-    <div id="root"></div>
+      } catch (err) {
+        console.error("Auth Error:", err);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setFbUser);
+    return () => unsubscribe();
+  }, []);
 
-    <script type="text/babel" data-type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, doc, onSnapshot, updateDoc, addDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  // 2. Real-time Firestore Listeners
+  useEffect(() => {
+    if (!fbUser) return;
 
-        const { useState, useEffect, useMemo } = React;
+    const attendeesRef = collection(db, 'artifacts', appId, 'public', 'data', 'attendees');
+    const unsubAttendees = onSnapshot(attendeesRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAttendees(list);
+    }, (err) => console.error("Attendees Sync Error:", err));
 
-        const Icon = ({ name, size = 24, className = "" }) => {
-            const icons = {
-                Users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
-                Calendar: <><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></>,
-                User: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
-                ShieldCheck: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></>,
-                Plus: <><path d="M5 12h14"/><path d="M12 5v14"/></>,
-                Trash: <><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></>,
-                Edit: <><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></>,
-                X: <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
-                ChevronLeft: <><path d="m15 18-6-6 6-6"/></>,
-                LogOut: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
-                Unlock: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></>,
-                Lock: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
-                MapPin: <><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></>,
-                ArrowRight: <><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>
-            };
-            return (
-                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    {icons[name] || null}
-                </svg>
-            );
-        };
+    const scheduleRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedule');
+    const unsubSchedule = onSnapshot(scheduleRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort primarily by startTime
+      const sorted = list.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+      setSchedule(sorted);
+    }, (err) => console.error("Schedule Sync Error:", err));
 
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'refuge-portal-v5';
+    return () => {
+      unsubAttendees();
+      unsubSchedule();
+    };
+  }, [fbUser]);
 
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [appUser, setAppUser] = useState(null);
-            const [view, setView] = useState('schedule');
-            const [currentTime] = useState(new Date());
-            const [attendees, setAttendees] = useState([]);
-            const [schedule, setSchedule] = useState([]);
-            
-            const [showAdminLogin, setShowAdminLogin] = useState(false);
-            const [showAttendeeLogin, setShowAttendeeLogin] = useState(false);
-            const [loginInput, setLoginInput] = useState("");
-            const [loginError, setLoginError] = useState("");
+  // 3. Clock Update (Every minute)
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-            const [modal, setModal] = useState({ type: null, data: null });
-            const [filterView, setFilterView] = useState(null); // { type: 'tribe' | 'apartment', value: string }
+  // --- Handlers ---
+  const handleAdminSubmit = (e) => {
+    e?.preventDefault();
+    if (loginInput === "RDS12admin") {
+      setAppUser({ id: 'staff-id', name: 'Staff Member', role: 'admin', team: 'Staff', room: 'Command Center' });
+      setShowAdminLogin(false);
+      setLoginInput("");
+      setLoginError("");
+    } else {
+      setLoginError("Incorrect Password");
+    }
+  };
 
-            useEffect(() => {
-                const initAuth = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                };
-                initAuth();
-                const unsubscribe = onAuthStateChanged(auth, setUser);
-                return () => unsubscribe();
-            }, []);
+  const handleAttendeeLogin = (e) => {
+    e?.preventDefault();
+    const name = loginInput.trim();
+    if (!name) return;
+    
+    const found = attendees.find(a => a.name.toLowerCase().includes(name.toLowerCase()));
+    if (found) {
+      setAppUser(found);
+    } else {
+      setAppUser({ id: 'guest-' + Date.now(), name: name, role: 'attendee', team: 'Guest', room: 'TBD' });
+    }
+    setShowAttendeeLogin(false);
+    setLoginInput("");
+    setLoginError("");
+  };
 
-            useEffect(() => {
-                if (!user) return;
-                const unsubA = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'attendees'), 
-                    (s) => setAttendees(s.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    (err) => console.error(err));
-                const unsubS = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'schedule'), 
-                    (s) => setSchedule(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(a.unlockTime) - new Date(b.unlockTime))),
-                    (err) => console.error(err));
-                return () => { unsubA(); unsubS(); };
-            }, [user]);
+  const deleteEvent = async (id) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedule', id));
+  };
 
-            const handleLogin = (e) => {
-                e.preventDefault();
-                if (showAdminLogin) {
-                    if (loginInput === "RDS12admin") setAppUser({ role: 'admin', name: 'Staff' });
-                    else setLoginError("Invalid password");
-                } else {
-                    const found = attendees.find(a => a.name.toLowerCase().includes(loginInput.toLowerCase()));
-                    if (found) setAppUser({ ...found, role: 'attendee' });
-                    else setLoginError("Name not found");
-                }
-            };
+  const saveEvent = async () => {
+    if (!editEventForm.title || !editEventForm.startTime || !editEventForm.endTime) return;
+    try {
+      if (isEditingEvent === 'new') {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedule'), editEventForm);
+      } else {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedule', isEditingEvent), editEventForm);
+      }
+      setIsEditingEvent(null);
+      setEditEventForm({ title: "", timeLabel: "", startTime: "", endTime: "", location: "" });
+    } catch (e) {
+      console.error("Error saving event:", e);
+    }
+  };
 
-            const saveAttendee = async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = {
-                    name: formData.get('name'),
-                    team: formData.get('team'),
-                    room: formData.get('room')
-                };
-                if (modal.data?.id) {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendees', modal.data.id), data);
-                } else {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendees'), data);
-                }
-                setModal({ type: null, data: null });
-            };
+  const saveAttendee = async () => {
+    if (!editUserForm.name) return;
+    if (isEditingAttendee === 'new') {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendees'), {...editUserForm, role: 'attendee'});
+    } else {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendees', isEditingAttendee), editUserForm);
+    }
+    setIsEditingAttendee(null);
+    setEditUserForm({ name: "", team: "", room: "" });
+  };
 
-            const saveEvent = async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = {
-                    title: formData.get('title'),
-                    timeLabel: formData.get('timeLabel'),
-                    location: formData.get('location'),
-                    unlockTime: formData.get('unlockTime')
-                };
-                if (modal.data?.id) {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedule', modal.data.id), data);
-                } else {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedule'), data);
-                }
-                setModal({ type: null, data: null });
-            };
+  const visibleSchedule = schedule.filter(event => {
+    if (showExpiredEvents) return true;
+    const end = new Date(event.endTime);
+    return end >= currentTime;
+  });
 
-            const deleteItem = async (col, id) => {
-                if (!confirm("Are you sure?")) return;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
-            };
+  if (!appUser) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 font-sans relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-500 rounded-full blur-[100px]" />
+        </div>
 
-            const filteredAttendees = useMemo(() => {
-                if (!filterView) return [];
-                const key = filterView.type === 'tribe' ? 'team' : 'room';
-                return attendees.filter(a => a[key] === filterView.value);
-            }, [filterView, attendees]);
+        <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-10 text-center z-10 animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-lg animate-bounce">
+            <Sparkles className="text-white w-10 h-10" />
+          </div>
+          <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimpse 2026</h1>
+          <p className="text-slate-500 mb-10 font-medium">RDS Preview Weekend</p>
+          
+          <div className="space-y-4">
+            <button 
+              onClick={() => { setShowAttendeeLogin(true); setLoginError(""); }} 
+              className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-95"
+            >
+              Attendee Login
+            </button>
+            <button 
+              onClick={() => { setShowAdminLogin(true); setLoginError(""); }} 
+              className="w-full py-5 border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95"
+            >
+              Staff Portal
+            </button>
+          </div>
+        </div>
 
-            if (!appUser) {
-                return (
-                    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
-                        <div className="absolute inset-0 opacity-20 pointer-events-none">
-                            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full blur-[100px]" />
-                        </div>
-                        <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-10 text-center z-10">
-                            <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-lg"><Icon name="Users" className="text-white" size={40} /></div>
-                            <h1 className="text-3xl font-black text-slate-900 mb-2">The Refuge</h1>
-                            <p className="text-slate-500 mb-10 font-medium">RDS Preview Weekend</p>
-                            <div className="space-y-4">
-                                <button onClick={() => setShowAttendeeLogin(true)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold active:scale-95 transition-transform">Attendee Login</button>
-                                <button onClick={() => setShowAdminLogin(true)} className="w-full py-4 border-2 border-slate-100 text-slate-700 rounded-2xl font-bold active:scale-95 transition-transform">Staff Portal</button>
-                            </div>
-                        </div>
-
-                        {(showAdminLogin || showAttendeeLogin) && (
-                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-                                <div className="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="font-black text-slate-800">{showAdminLogin ? "Staff Access" : "Enter Portal"}</h3>
-                                        <button onClick={() => {setShowAdminLogin(false); setShowAttendeeLogin(false); setLoginError(""); setLoginInput("");}}><Icon name="X" className="text-slate-400" size={20} /></button>
-                                    </div>
-                                    <form onSubmit={handleLogin} className="space-y-4">
-                                        <input autoFocus type={showAdminLogin ? "password" : "text"} placeholder={showAdminLogin ? "Password" : "Your Name"} value={loginInput} onChange={(e) => setLoginInput(e.target.value)} className="w-full bg-slate-100 border-2 border-transparent focus:border-blue-600 rounded-2xl px-5 py-4 text-sm font-bold outline-none" />
-                                        {loginError && <p className="text-red-500 text-[10px] font-black text-center">{loginError}</p>}
-                                        <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">Enter</button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            }
-
-            return (
-                <div className="min-h-screen bg-slate-50 flex flex-col max-w-md mx-auto shadow-2xl relative font-sans overflow-hidden pb-28">
-                    <header className="bg-white px-6 pt-12 pb-6 border-b border-slate-100 flex-none flex justify-between items-center">
-                        <div>
-                            <h1 className="text-[10px] font-black text-blue-600 uppercase tracking-widest">The Refuge Live</h1>
-                            <p className="text-2xl font-black text-slate-900">{filterView ? 'Community' : 'Portal'}</p>
-                        </div>
-                        {filterView ? (
-                            <button onClick={() => setFilterView(null)} className="p-3 bg-slate-100 rounded-2xl text-slate-400 font-bold flex items-center gap-2"><Icon name="X" size={18} /></button>
-                        ) : (
-                            <button onClick={() => setAppUser(null)} className="p-3 bg-slate-100 rounded-2xl text-slate-400"><Icon name="LogOut" size={20} /></button>
-                        )}
-                    </header>
-
-                    <main className="flex-1 overflow-y-auto px-6 py-6 scrollbar-hide">
-                        {filterView ? (
-                            <div className="view-enter space-y-4">
-                                <div className="mb-6">
-                                    <p className="text-xs font-black text-slate-400 uppercase">{filterView.type === 'tribe' ? 'Tribe Members' : 'Apartment Mates'}</p>
-                                    <h2 className="text-3xl font-black text-slate-800">{filterView.value}</h2>
-                                </div>
-                                <div className="space-y-3">
-                                    {filteredAttendees.map(a => (
-                                        <div key={a.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-black">{a.name.charAt(0)}</div>
-                                                <p className="font-black text-slate-800">{a.name} {a.id === appUser.id && "(You)"}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                {view === 'schedule' && (
-                                    <div className="view-enter space-y-4">
-                                        <h2 className="text-xl font-black text-slate-800 flex items-center"><Icon name="Calendar" className="mr-2 text-blue-600" size={20} /> Timeline</h2>
-                                        {schedule.map(item => {
-                                            const unlocked = currentTime >= new Date(item.unlockTime) || appUser.role === 'admin';
-                                            return (
-                                                <div key={item.id} className={`p-6 rounded-[2rem] border ${unlocked ? 'bg-white shadow-sm border-slate-100' : 'bg-slate-200 opacity-50'}`}>
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <span className={`text-[10px] font-black px-3 py-1 rounded-full ${unlocked ? 'bg-blue-50 text-blue-600' : 'bg-slate-300'}`}>{item.timeLabel}</span>
-                                                        <Icon name={unlocked ? "Unlock" : "Lock"} size={14} className={unlocked ? "text-green-500" : "text-slate-400"} />
-                                                    </div>
-                                                    <h3 className="text-lg font-black text-slate-800">{unlocked ? item.title : "Locked Event"}</h3>
-                                                    {unlocked && <div className="mt-2 text-slate-500 text-xs font-bold flex items-center"><Icon name="MapPin" size={14} className="mr-1" /> {item.location}</div>}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {view === 'info' && (
-                                    <div className="view-enter space-y-6">
-                                        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 text-center">
-                                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center font-black text-xl">{appUser.name.charAt(0)}</div>
-                                            <h2 className="text-2xl font-black text-slate-800">Hi, {appUser.name}!</h2>
-                                            <p className="text-slate-400 text-sm font-bold mt-1">Select a card below to see your community.</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 gap-4">
-                                            <button 
-                                                onClick={() => appUser.team && setFilterView({ type: 'tribe', value: appUser.team })}
-                                                className="bg-blue-600 text-white p-8 rounded-[2.5rem] text-left relative overflow-hidden active:scale-[0.98] transition-all group"
-                                            >
-                                                <div className="relative z-10">
-                                                    <p className="text-[10px] font-black uppercase opacity-60 mb-1">Your Tribe</p>
-                                                    <p className="text-2xl font-black">{appUser.team || "Not Assigned"}</p>
-                                                    <div className="mt-4 flex items-center text-[10px] font-black uppercase tracking-widest gap-2">
-                                                        View Members <Icon name="ArrowRight" size={14} />
-                                                    </div>
-                                                </div>
-                                                <Icon name="Users" size={120} className="absolute -bottom-4 -right-4 text-white opacity-10 group-hover:scale-110 transition-transform" />
-                                            </button>
-                                            
-                                            <button 
-                                                onClick={() => appUser.room && setFilterView({ type: 'apartment', value: appUser.room })}
-                                                className="bg-white border-2 border-slate-100 p-8 rounded-[2.5rem] text-left relative overflow-hidden active:scale-[0.98] transition-all group"
-                                            >
-                                                <div className="relative z-10">
-                                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Apartment #</p>
-                                                    <p className="text-2xl font-black text-slate-800">{appUser.room || "N/A"}</p>
-                                                    <div className="mt-4 flex items-center text-[10px] font-black uppercase tracking-widest gap-2 text-blue-600">
-                                                        View Mates <Icon name="ArrowRight" size={14} />
-                                                    </div>
-                                                </div>
-                                                <Icon name="Home" size={120} className="absolute -bottom-4 -right-4 text-slate-50 opacity-50 group-hover:scale-110 transition-transform" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {view === 'admin' && (
-                                    <div className="view-enter space-y-6">
-                                        <h2 className="text-xl font-black text-slate-800">Staff Control</h2>
-                                        <div className="space-y-4">
-                                            <button onClick={() => setView('editAttendees')} className="w-full flex items-center justify-between bg-white border p-6 rounded-[2rem]">
-                                                <span className="font-black">Directory ({attendees.length})</span>
-                                                <Icon name="Users" size={24} className="text-blue-600" />
-                                            </button>
-                                            <button onClick={() => setView('manageEvents')} className="w-full flex items-center justify-between bg-white border p-6 rounded-[2rem]">
-                                                <span className="font-black">Schedule ({schedule.length})</span>
-                                                <Icon name="Calendar" size={24} className="text-blue-600" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {view === 'editAttendees' && (
-                                    <div className="view-enter space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <button onClick={() => setView('admin')} className="text-blue-600 font-black flex items-center"><Icon name="ChevronLeft" size={20} /> Back</button>
-                                            <button onClick={() => setModal({ type: 'attendee', data: {} })} className="p-3 bg-blue-600 text-white rounded-full"><Icon name="Plus" size={20} /></button>
-                                        </div>
-                                        {attendees.map(a => (
-                                            <div key={a.id} className="bg-white p-4 rounded-3xl border flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-black text-slate-800">{a.name}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Tribe: {a.team} • Apt: {a.room}</p>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setModal({ type: 'attendee', data: a })} className="p-2 text-slate-400 hover:text-blue-600"><Icon name="Edit" size={18} /></button>
-                                                    <button onClick={() => deleteItem('attendees', a.id)} className="p-2 text-slate-400 hover:text-red-500"><Icon name="Trash" size={18} /></button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {view === 'manageEvents' && (
-                                    <div className="view-enter space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <button onClick={() => setView('admin')} className="text-blue-600 font-black flex items-center"><Icon name="ChevronLeft" size={20} /> Back</button>
-                                            <button onClick={() => setModal({ type: 'event', data: {} })} className="p-3 bg-blue-600 text-white rounded-full"><Icon name="Plus" size={20} /></button>
-                                        </div>
-                                        {schedule.map(s => (
-                                            <div key={s.id} className="bg-white p-4 rounded-3xl border flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-black text-slate-800">{s.title}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">{s.timeLabel}</p>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setModal({ type: 'event', data: s })} className="p-2 text-slate-400 hover:text-blue-600"><Icon name="Edit" size={18} /></button>
-                                                    <button onClick={() => deleteItem('schedule', s.id)} className="p-2 text-slate-400 hover:text-red-500"><Icon name="Trash" size={18} /></button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </main>
-
-                    {/* Modals */}
-                    {modal.type && (
-                        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[100] flex items-center justify-center p-6">
-                            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-                                <h3 className="text-xl font-black mb-6 text-slate-800">{modal.data?.id ? 'Edit' : 'Add New'} {modal.type === 'attendee' ? 'Attendee' : 'Event'}</h3>
-                                <form onSubmit={modal.type === 'attendee' ? saveAttendee : saveEvent} className="space-y-4">
-                                    {modal.type === 'attendee' ? (
-                                        <>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Full Name</label><input name="name" defaultValue={modal.data?.name} required className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Tribe Name</label><input name="team" defaultValue={modal.data?.team} className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Apartment #</label><input name="room" defaultValue={modal.data?.room} className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Event Title</label><input name="title" defaultValue={modal.data?.title} required className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Time Label</label><input name="timeLabel" defaultValue={modal.data?.timeLabel} required className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Location</label><input name="location" defaultValue={modal.data?.location} required className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                            <div><label className="text-[10px] font-black uppercase text-slate-400 ml-2">Unlock Date/Time</label><input type="datetime-local" name="unlockTime" defaultValue={modal.data?.unlockTime ? new Date(modal.data.unlockTime).toISOString().slice(0, 16) : ''} required className="w-full bg-slate-50 border rounded-2xl p-4 text-sm font-bold" /></div>
-                                        </>
-                                    )}
-                                    <div className="flex gap-3 pt-4">
-                                        <button type="button" onClick={() => setModal({ type: null, data: null })} className="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-500">Cancel</button>
-                                        <button className="flex-1 py-4 bg-blue-600 rounded-2xl font-black text-white">Save</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {!filterView && (
-                        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[360px] bg-white border shadow-xl rounded-full p-2 flex justify-around items-center z-50">
-                            <button onClick={() => setView('schedule')} className={`py-4 rounded-full flex-1 flex justify-center ${view === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}><Icon name="Calendar" size={22} /></button>
-                            <button onClick={() => setView('info')} className={`py-4 rounded-full flex-1 flex justify-center ${view === 'info' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}><Icon name="User" size={22} /></button>
-                            {appUser?.role === 'admin' && (
-                                <button onClick={() => setView('admin')} className={`py-4 rounded-full flex-1 flex justify-center ${['admin', 'editAttendees', 'manageEvents'].includes(view) ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}><Icon name="ShieldCheck" size={22} /></button>
-                            )}
-                        </nav>
-                    )}
+        {(showAdminLogin || showAttendeeLogin) && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-black text-slate-800 text-lg">{showAdminLogin ? "Staff Portal" : "Attendee Login"}</h3>
+                <button onClick={() => {setShowAdminLogin(false); setShowAttendeeLogin(false); setLoginInput("");}} className="p-2 hover:bg-slate-100 rounded-full">
+                  <X size={20} className="text-slate-400" />
+                </button>
+              </div>
+              <form onSubmit={showAdminLogin ? handleAdminSubmit : handleAttendeeLogin} className="space-y-6">
+                <div>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                    {showAdminLogin ? "Access Password" : "First Name"}
+                  </label>
+                  <input 
+                    autoFocus
+                    type={showAdminLogin ? "password" : "text"}
+                    placeholder={showAdminLogin ? "••••••••" : "Your Name"}
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 text-slate-800 font-medium focus:outline-none transition-all"
+                  />
+                  {loginError && <p className="text-red-500 text-xs font-bold mt-2 ml-1">{loginError}</p>}
                 </div>
-            );
-        };
+                <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-black transition-all">
+                  Continue
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+  const activeUser = appUser.role === 'admin' ? appUser : (attendees.find(a => a.id === appUser.id) || appUser);
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-28 max-w-md mx-auto shadow-2xl relative flex flex-col font-sans overflow-hidden">
+      <header className="bg-white border-b border-slate-100 px-8 pt-14 pb-8 flex-none">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-[11px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Portal</h1>
+            <p className="text-3xl font-black text-slate-900 tracking-tight leading-none">Glimpse</p>
+          </div>
+          <button onClick={() => {setAppUser(null); setView('schedule');}} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-red-500 transition-all">
+            <LogOut size={20} />
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-6 py-6 scrollbar-hide">
+        {view === 'schedule' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex items-center justify-between mb-6 px-2">
+              <h2 className="text-xl font-black text-slate-800">Schedule</h2>
+              <button 
+                onClick={() => setShowExpiredEvents(!showExpiredEvents)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${showExpiredEvents ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}
+              >
+                {showExpiredEvents ? 'Full View' : 'Live Now'}
+                <Filter size={12} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {visibleSchedule.map((item) => {
+                const start = new Date(item.startTime);
+                const end = new Date(item.endTime);
+                const isUnlocked = currentTime >= start || activeUser.role === 'admin';
+                const isLive = currentTime >= start && currentTime <= end;
+                const isPast = currentTime > end;
+
+                return (
+                  <div key={item.id} className={`rounded-[2rem] p-6 transition-all border-2 ${
+                    isLive 
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-blue-200 shadow-xl scale-[1.02]' 
+                      : isUnlocked 
+                        ? (isPast ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-md')
+                        : 'bg-slate-100 border-transparent opacity-40'
+                  }`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isLive ? 'text-blue-100' : 'text-slate-400'}`}>
+                          {item.timeLabel}
+                        </span>
+                        {isLive && (
+                          <span className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
+                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
+                            Live
+                          </span>
+                        )}
+                      </div>
+                      {isUnlocked ? (
+                        <Unlock size={16} className={isLive ? 'text-white' : (isPast ? 'text-slate-300' : 'text-green-500')} />
+                      ) : (
+                        <Lock size={16} className="text-slate-400" />
+                      )}
+                    </div>
+                    <h3 className={`text-lg font-black ${isLive ? 'text-white' : (isPast ? 'text-slate-400' : 'text-slate-800')}`}>
+                      {isUnlocked ? item.title : "Mystery Event"}
+                    </h3>
+                    {isUnlocked && (
+                      <p className={`text-sm mt-2 flex items-center ${isLive ? 'text-blue-50 opacity-90' : 'text-slate-500'}`}>
+                        <MapPin size={14} className={`mr-2 ${isLive ? 'text-white' : (isPast ? 'text-slate-300' : 'text-blue-500')}`} />
+                        {item.location}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              {visibleSchedule.length === 0 && (
+                <div className="text-center py-20">
+                  <Calendar className="mx-auto w-12 h-12 text-slate-200 mb-4" />
+                  <p className="text-slate-400 font-medium">No events found matching current filter.</p>
+                  <button onClick={() => setShowExpiredEvents(true)} className="mt-4 text-blue-600 font-bold text-sm">Show Full Schedule</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === 'info' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 text-center">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <User size={30} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-800 mb-1">Hi, {activeUser.name.split(' ')[0]}!</h2>
+                <p className="text-sm text-slate-400 font-medium">Welcome to Glimpse 2026.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => { setView('directory'); setDirectoryFilter({ type: 'Tribe', value: activeUser.team }); }}
+                className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-xl text-left transition-all active:scale-95 group relative overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-100 transition-opacity">
+                   <ArrowRight size={16} />
+                </div>
+                <Users size={24} className="mb-4 opacity-80" />
+                <p className="text-[10px] uppercase font-black tracking-widest opacity-70 mb-1">Tribe</p>
+                <p className="text-xl font-black truncate">{activeUser.team || "None"}</p>
+              </button>
+              <button 
+                onClick={() => { setView('directory'); setDirectoryFilter({ type: 'Apartment', value: activeUser.room }); }}
+                className="bg-white border-2 border-slate-100 p-6 rounded-[2rem] text-left transition-all active:scale-95 group relative overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 text-slate-200 group-hover:text-blue-500 transition-colors">
+                   <ArrowRight size={16} />
+                </div>
+                <Home size={24} className="mb-4 text-blue-600" />
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">Apartment</p>
+                <p className="text-xl font-black text-slate-800 truncate">{activeUser.room || 'TBD'}</p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === 'directory' && (
+          <div className="animate-in fade-in slide-in-from-right-4 space-y-4">
+            <button onClick={() => setView('info')} className="flex items-center text-blue-600 font-bold mb-4"><ChevronLeft size={20}/> Back to Profile</button>
+            
+            <div className={`p-6 rounded-[2rem] ${directoryFilter.type === 'Tribe' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-white'} shadow-xl mb-6`}>
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-70 mb-1">{directoryFilter.type}</h3>
+              <p className="text-2xl font-black">{directoryFilter.value}</p>
+            </div>
+
+            <div className="space-y-3">
+              {attendees
+                .filter(a => directoryFilter.type === 'Tribe' ? a.team === directoryFilter.value : a.room === directoryFilter.value)
+                .map(person => (
+                  <div key={person.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center font-black text-blue-600">
+                        {person.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">{person.name} {person.id === activeUser.id ? "(You)" : ""}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          {directoryFilter.type === 'Tribe' ? `Apt ${person.room}` : `Tribe ${person.team}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        )}
+
+        {view === 'admin' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+            <h2 className="text-xl font-black text-slate-800 flex items-center ml-2">
+              <ShieldCheck className="mr-3 text-blue-600" /> Staff Tools
+            </h2>
+            <div className="grid gap-4">
+              <button onClick={() => setView('editAttendees')} className="flex items-center justify-between bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm hover:border-blue-300 transition-all">
+                <div className="text-left">
+                  <h3 className="font-black text-slate-800">Directory</h3>
+                  <p className="text-xs text-slate-400 uppercase tracking-widest">{attendees.length} Members</p>
+                </div>
+                <Users className="text-blue-500" />
+              </button>
+              <button onClick={() => setView('manageEvents')} className="flex items-center justify-between bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm hover:border-blue-300 transition-all">
+                <div className="text-left">
+                  <h3 className="font-black text-slate-800">Schedule</h3>
+                  <p className="text-xs text-slate-400 uppercase tracking-widest">{schedule.length} Events</p>
+                </div>
+                <Calendar className="text-blue-500" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === 'editAttendees' && (
+          <div className="space-y-4">
+            <button onClick={() => setView('admin')} className="flex items-center text-blue-600 font-bold mb-4"><ChevronLeft size={20}/> Back</button>
+            
+            {!isEditingAttendee ? (
+              <button onClick={() => { setIsEditingAttendee('new'); setEditUserForm({ name: "", team: "", room: "" }); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center mb-4"><Plus size={20} className="mr-2"/> Add Member</button>
+            ) : (
+              <div className="bg-white p-6 rounded-[2rem] border-2 border-blue-100 space-y-3 mb-4 shadow-lg animate-in slide-in-from-top-4">
+                <h3 className="font-black text-slate-800 mb-2">{isEditingAttendee === 'new' ? 'New Roster Member' : 'Edit Member'}</h3>
+                <input placeholder="Full Name" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} />
+                <input placeholder="Tribe" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editUserForm.team} onChange={e => setEditUserForm({...editUserForm, team: e.target.value})} />
+                <input placeholder="Apartment" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editUserForm.room} onChange={e => setEditUserForm({...editUserForm, room: e.target.value})} />
+                <div className="flex gap-2 pt-2">
+                  <button onClick={saveAttendee} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save Member</button>
+                  <button onClick={() => setIsEditingAttendee(null)} className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {attendees.map(a => (
+               <div key={a.id} className="bg-white p-5 rounded-2xl border flex justify-between items-center shadow-sm">
+                  <div>
+                    <p className="font-bold text-slate-800">{a.name}</p>
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{a.team} • {a.room}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => { setIsEditingAttendee(a.id); setEditUserForm({ name: a.name, team: a.team, room: a.room }); }} className="text-slate-400 hover:text-blue-500 p-2"><Edit2 size={18}/></button>
+                    <button onClick={async () => await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendees', a.id))} className="text-red-300 hover:text-red-500 p-2"><Trash2 size={18}/></button>
+                  </div>
+               </div>
+            ))}
+          </div>
+        )}
+
+        {view === 'manageEvents' && (
+          <div className="space-y-4">
+             <button onClick={() => setView('admin')} className="flex items-center text-blue-600 font-bold mb-4"><ChevronLeft size={20}/> Back</button>
+             
+             {!isEditingEvent ? (
+               <button onClick={() => {
+                 setIsEditingEvent('new');
+                 const now = new Date();
+                 const inAnHour = new Date(now.getTime() + 60*60*1000);
+                 setEditEventForm({ 
+                   title: "", 
+                   timeLabel: "", 
+                   startTime: now.toISOString().slice(0,16), 
+                   endTime: inAnHour.toISOString().slice(0,16), 
+                   location: "" 
+                 });
+               }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center mb-4 shadow-lg"><Plus size={20} className="mr-2"/> New Schedule Item</button>
+             ) : (
+               <div className="bg-white p-6 rounded-[2rem] border-2 border-blue-100 space-y-3 mb-4 shadow-lg animate-in slide-in-from-top-4">
+                 <h3 className="font-black text-slate-800 mb-2">{isEditingEvent === 'new' ? 'Create New Event' : 'Edit Event'}</h3>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Event Title</label>
+                   <input placeholder="e.g. Secret Session" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.title} onChange={e => setEditEventForm({...editEventForm, title: e.target.value})} />
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Display Time (e.g. 7:00 PM)</label>
+                   <input placeholder="e.g. 7:00 PM" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.timeLabel} onChange={e => setEditEventForm({...editEventForm, timeLabel: e.target.value})} />
+                 </div>
+                 <div className="grid grid-cols-2 gap-3">
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Reveal Time</label>
+                     <input type="datetime-local" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.startTime} onChange={e => setEditEventForm({...editEventForm, startTime: e.target.value})} />
+                   </div>
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">End Date/Time</label>
+                     <input type="datetime-local" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.endTime} onChange={e => setEditEventForm({...editEventForm, endTime: e.target.value})} />
+                   </div>
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Location</label>
+                   <input placeholder="e.g. Main Cabin" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.location} onChange={e => setEditEventForm({...editEventForm, location: e.target.value})} />
+                 </div>
+                 <div className="flex gap-2 pt-2">
+                   <button onClick={saveEvent} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">Save Event</button>
+                   <button onClick={() => setIsEditingEvent(null)} className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">Cancel</button>
+                 </div>
+               </div>
+             )}
+
+             <div className="space-y-4">
+              <div className="flex items-center justify-between ml-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Event List ({schedule.length})</p>
+                <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase tracking-tighter">Sorted by Time</span>
+              </div>
+              
+              {schedule.map(event => (
+                <div key={event.id} className="bg-white p-6 rounded-[1.5rem] border shadow-sm space-y-3 relative overflow-hidden">
+                    {new Date(event.endTime) < currentTime && (
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-slate-100 text-[9px] font-bold text-slate-400 uppercase tracking-widest rounded-bl-lg">Expired</div>
+                    )}
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-blue-500"/>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{event.timeLabel || "Unlabeled"}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => { setIsEditingEvent(event.id); setEditEventForm({ ...event }); }} className="text-slate-400 hover:text-blue-500 p-2"><Edit2 size={16}/></button>
+                        <button onClick={() => deleteEvent(event.id)} className="text-red-300 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+                      </div>
+                    </div>
+                    <h3 className="font-black text-slate-800 text-lg leading-tight">{event.title}</h3>
+                    <div className="flex flex-col gap-1 mt-2">
+                      <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <MapPin size={12} className="mr-1 text-blue-400"/> {event.location}
+                      </div>
+                      <div className="flex items-center text-[9px] text-slate-400 font-medium">
+                        Reveal: {new Date(event.startTime).toLocaleString()}
+                      </div>
+                    </div>
+                </div>
+              ))}
+              {schedule.length === 0 && (
+                <div className="bg-dashed bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center">
+                   <p className="text-slate-400 font-medium italic">No events created yet.</p>
+                </div>
+              )}
+             </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[85%] max-w-[340px] bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-[2.5rem] p-2 flex justify-around items-center z-50">
+        <button onClick={() => setView('schedule')} className={`flex flex-col items-center py-4 rounded-[2rem] transition-all flex-1 ${view === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}>
+          <Calendar size={22} strokeWidth={view === 'schedule' ? 3 : 2} />
+        </button>
+        <button onClick={() => setView('info')} className={`flex flex-col items-center py-4 rounded-[2rem] transition-all flex-1 ${(['info', 'directory'].includes(view)) ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}>
+          <Info size={22} strokeWidth={(['info', 'directory'].includes(view)) ? 3 : 2} />
+        </button>
+        {activeUser.role === 'admin' && (
+          <button onClick={() => setView('admin')} className={`flex flex-col items-center py-4 rounded-[2rem] transition-all flex-1 ${(['admin', 'editAttendees', 'manageEvents'].includes(view)) ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}>
+            <ShieldCheck size={22} strokeWidth={3} />
+          </button>
+        )}
+      </nav>
+    </div>
+  );
+};
+
+export default App;
