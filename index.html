@@ -66,6 +66,43 @@
         .community-widget {
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
         }
+
+        /* Management Overlays */
+        #admin-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: white;
+            z-index: 200;
+            overflow-y: auto;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            margin-left: 0.5rem;
+        }
+
+        .input-field {
+            width: 100%;
+            background: #f1f5f9;
+            border-radius: 1rem;
+            padding: 1rem;
+            font-weight: bold;
+            border: 2px solid transparent;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: #2563eb;
+            background: white;
+        }
     </style>
 </head>
 <body>
@@ -135,11 +172,11 @@
                     </div>
                     
                     <div class="grid grid-cols-2 gap-3">
-                        <button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
+                        <button id="btn-manage-members" class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
                             <span class="text-2xl mb-2">👥</span>
                             <span class="text-[11px] font-black uppercase tracking-tight text-center">Manage Members</span>
                         </button>
-                        <button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
+                        <button id="btn-manage-events" class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
                             <span class="text-2xl mb-2">🗓️</span>
                             <span class="text-[11px] font-black uppercase tracking-tight text-center">Manage Events</span>
                         </button>
@@ -184,14 +221,55 @@
         </div>
     </div>
 
+    <!-- ADMIN MANAGEMENT MODAL -->
+    <div id="admin-modal">
+        <div class="max-w-md mx-auto p-8">
+            <header class="flex items-center justify-between mb-10">
+                <div>
+                    <h2 id="modal-title" class="text-3xl font-black text-slate-900">Manage</h2>
+                    <p id="modal-subtitle" class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Editing Database</p>
+                </div>
+                <button id="btn-close-modal" class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl">✕</button>
+            </header>
+
+            <!-- Form Section -->
+            <div id="modal-form" class="bg-slate-50 p-6 rounded-[2rem] mb-8">
+                <div id="form-fields" class="space-y-4">
+                    <!-- Fields injected here -->
+                </div>
+                <button id="btn-save-item" class="w-full mt-6 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200">Save Entry</button>
+                <button id="btn-cancel-edit" class="hidden w-full mt-2 py-3 text-slate-400 font-bold text-xs uppercase">Cancel Edit</button>
+            </div>
+
+            <!-- List Section -->
+            <h3 class="font-black text-xs uppercase tracking-widest text-slate-300 mb-4">Current Entries</h3>
+            <div id="modal-list" class="space-y-3">
+                <!-- List items injected here -->
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // State
+        let db, auth, currentUserId;
+        let currentMode = 'events'; // 'events' or 'members'
+        let editingId = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
+
+        // DOM Elements
         const input = document.getElementById('user-input');
         const btnEnter = document.getElementById('btn-enter');
         const btnLogout = document.getElementById('btn-logout');
+        const adminModal = document.getElementById('admin-modal');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const modalList = document.getElementById('modal-list');
+        const formFields = document.getElementById('form-fields');
+        const btnSaveItem = document.getElementById('btn-save-item');
+        const btnCancelEdit = document.getElementById('btn-cancel-edit');
         const ADMIN_PASS = 'RDS12admin';
 
         function setupNavigation() {
@@ -211,6 +289,84 @@
             });
         }
 
+        // --- Admin Logic ---
+        function openManagement(mode) {
+            currentMode = mode;
+            editingId = null;
+            document.getElementById('modal-title').innerText = mode === 'events' ? 'Events' : 'Members';
+            adminModal.style.display = 'block';
+            renderForm();
+            btnCancelEdit.classList.add('hidden');
+            btnSaveItem.innerText = 'Save Entry';
+        }
+
+        function renderForm() {
+            if (currentMode === 'events') {
+                formFields.innerHTML = `
+                    <div class="input-group"><label>Event Name</label><input type="text" id="f-name" class="input-field" placeholder="Session 1"></div>
+                    <div class="input-group"><label>Location</label><input type="text" id="f-location" class="input-field" placeholder="Main Hall"></div>
+                    <div class="input-group"><label>Time</label><input type="text" id="f-time" class="input-field" placeholder="10:00 AM"></div>
+                    <div class="input-group"><label>Reveal Time</label><input type="text" id="f-reveal" class="input-field" placeholder="09:00 AM"></div>
+                `;
+            } else {
+                formFields.innerHTML = `
+                    <div class="input-group"><label>Full Name</label><input type="text" id="f-name" class="input-field" placeholder="John Doe"></div>
+                    <div class="input-group"><label>Tribe</label><input type="text" id="f-tribe" class="input-field" placeholder="Lions"></div>
+                    <div class="input-group"><label>Apartment</label><input type="text" id="f-apartment" class="input-field" placeholder="Unit 4B"></div>
+                `;
+            }
+        }
+
+        async function saveItem() {
+            if (!auth.currentUser) return;
+            const data = {};
+            const fields = formFields.querySelectorAll('input');
+            fields.forEach(f => {
+                const key = f.id.replace('f-', '');
+                data[key] = f.value;
+            });
+
+            if (!data.name) return;
+
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', currentMode);
+            
+            try {
+                if (editingId) {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, editingId), data);
+                } else {
+                    await addDoc(colRef, data);
+                }
+                resetForm();
+            } catch (e) {
+                console.error("Save error:", e);
+            }
+        }
+
+        function resetForm() {
+            editingId = null;
+            renderForm();
+            btnCancelEdit.classList.add('hidden');
+            btnSaveItem.innerText = 'Save Entry';
+        }
+
+        function startEdit(id, data) {
+            editingId = id;
+            btnCancelEdit.classList.remove('hidden');
+            btnSaveItem.innerText = 'Update Entry';
+            
+            Object.keys(data).forEach(key => {
+                const el = document.getElementById(`f-${key}`);
+                if (el) el.value = data[key];
+            });
+            adminModal.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteItem(id) {
+            if (!confirm('Are you sure you want to delete this?')) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
+        }
+
+        // --- Auth & Entry ---
         btnEnter.onclick = () => {
             const val = input.value.trim();
             if(!val) return;
@@ -218,7 +374,6 @@
             const isAdmin = val === ADMIN_PASS;
             const userName = isAdmin ? 'Admin User' : val;
             
-            // UI Setup
             document.getElementById('display-name').innerText = userName;
             document.getElementById('profile-name').innerText = userName;
             document.getElementById('profile-role').innerText = isAdmin ? 'Event Staff' : 'Attendee';
@@ -242,41 +397,40 @@
             if (e.key === 'Enter') btnEnter.click();
         });
 
-        btnLogout.onclick = () => {
-            location.reload();
-        };
+        btnLogout.onclick = () => location.reload();
+        btnCloseModal.onclick = () => adminModal.style.display = 'none';
+        btnSaveItem.onclick = saveItem;
+        btnCancelEdit.onclick = resetForm;
+        document.getElementById('btn-manage-members').onclick = () => openManagement('members');
+        document.getElementById('btn-manage-events').onclick = () => openManagement('events');
 
         async function initFirebase() {
             try {
                 const firebaseConfig = JSON.parse(__firebase_config);
                 const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                const db = getFirestore(app);
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
+                auth = getAuth(app);
+                db = getFirestore(app);
 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                await initAuth();
 
                 onAuthStateChanged(auth, (user) => {
                     if (!user) return;
+                    currentUserId = user.uid;
 
+                    // Sync Schedule (Public Events)
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
-                        const events = snap.docs.map(doc => doc.data()).sort((a,b) => (a.time || "").localeCompare(b.time || ""));
-                        const feed = document.getElementById('schedule-feed');
+                        const events = snap.docs.map(doc => ({id: doc.id, ...doc.data()})).sort((a,b) => (a.time || "").localeCompare(b.time || ""));
                         
-                        if (events.length === 0) {
-                            feed.innerHTML = `
-                                <div class="p-8 border-2 border-dashed border-slate-100 rounded-[2.5rem] text-center">
-                                    <p class="text-slate-400 text-sm font-bold">Schedule will appear here shortly.</p>
-                                </div>
-                            `;
-                            return;
-                        }
-
-                        feed.innerHTML = events.map(e => `
+                        // Update Schedule View
+                        const feed = document.getElementById('schedule-feed');
+                        feed.innerHTML = events.length ? events.map(e => `
                             <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
                                 <div class="flex justify-between items-start mb-2">
                                     <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black text-blue-600 shadow-sm">${e.time || 'TBD'}</span>
@@ -284,13 +438,47 @@
                                 </div>
                                 <h4 class="text-lg font-black text-slate-900">${e.name}</h4>
                             </div>
-                        `).join('');
-                    }, (err) => console.error("Firestore error:", err));
+                        `).join('') : `<div class="p-8 border-2 border-dashed border-slate-100 rounded-[2.5rem] text-center"><p class="text-slate-400 text-sm font-bold">Schedule pending...</p></div>`;
+
+                        // Update Admin List if in events mode
+                        if (currentMode === 'events') updateAdminList(events);
+                    });
+
+                    // Sync Members for Admin
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
+                        const members = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                        if (currentMode === 'members') updateAdminList(members);
+                    });
                 });
             } catch (err) {
-                console.warn("Offline mode active.");
+                console.warn("Offline/Firebase error:", err);
             }
         }
+
+        function updateAdminList(items) {
+            modalList.innerHTML = items.map(item => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+                    <div>
+                        <p class="font-black text-slate-900 text-sm">${item.name}</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                            ${currentMode === 'events' ? (item.time || 'No Time') : (item.tribe || 'No Tribe')}
+                        </p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="window.editItem('${item.id}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xs">✎</button>
+                        <button onclick="window.deleteItem('${item.id}')" class="w-8 h-8 bg-red-50 text-red-400 rounded-lg flex items-center justify-center text-xs">✕</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Helper for global scope access from template literals
+            window.editItem = (id) => {
+                const item = items.find(i => i.id === id);
+                if (item) startEdit(id, item);
+            };
+            window.deleteItem = deleteItem;
+        }
+
     </script>
 </body>
 </html>
