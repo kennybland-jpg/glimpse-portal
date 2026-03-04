@@ -19,27 +19,27 @@
         .admin-widget { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
         .input-pill { width: 100%; background: #f1f5f9; border: 2px solid transparent; border-radius: 1rem; padding: 0.75rem 1rem; outline: none; font-weight: 600; font-size: 14px; }
         .input-pill:focus { border-color: #2563eb; background: white; }
+        
+        .reveal-anim { animation: revealScale 0.5s ease-out; }
+        @keyframes revealScale {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- MODAL FOR ADD/EDIT/DISCOVERY -->
     <div id="modal-overlay">
         <div class="glass-card max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="modal-title" class="text-2xl font-black">Details</h2>
                 <button id="btn-close-modal" class="text-slate-400 font-bold p-2">✕</button>
             </div>
-            <div id="modal-body" class="overflow-y-auto pr-2 space-y-4">
-                <!-- Content injected dynamically -->
-            </div>
-            <div id="modal-footer" class="mt-6 pt-4 border-t border-slate-100 flex gap-2">
-                <!-- Action buttons injected dynamically -->
-            </div>
+            <div id="modal-body" class="overflow-y-auto pr-2 space-y-4"></div>
+            <div id="modal-footer" class="mt-6 pt-4 border-t border-slate-100 flex gap-2"></div>
         </div>
     </div>
 
-    <!-- DB SETUP -->
     <div id="setup-overlay">
         <div class="glass-card">
             <h2 class="text-2xl font-black mb-1">Admin Configuration</h2>
@@ -49,7 +49,6 @@
         </div>
     </div>
 
-    <!-- GATEWAY -->
     <div id="gateway-view" class="glass-card">
         <div class="flex flex-col items-center text-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center shadow-xl text-2xl text-white">✨</div>
@@ -62,40 +61,38 @@
         </div>
     </div>
 
-    <!-- MAIN APP -->
     <div id="app-view">
         <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
-            <!-- Schedule View -->
             <div id="view-schedule" class="view-content active">
-                <header class="mb-10 pt-8">
-                    <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Live Schedule</p>
-                    <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
+                <header class="mb-10 pt-8 flex justify-between items-start">
+                    <div>
+                        <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Live Schedule</p>
+                        <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
+                    </div>
+                    <div id="live-clock" class="text-right text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full">00:00:00</div>
                 </header>
                 <div id="schedule-feed" class="space-y-4"></div>
             </div>
 
-            <!-- Profile/Admin View -->
             <div id="view-profile" class="view-content">
                 <header class="mb-10 pt-8"><h1 class="text-4xl font-black text-slate-900">Account</h1></header>
                 
-                <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100 relative">
+                <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100">
                     <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                     
-                    <!-- Attendee Widgets -->
                     <div id="attendee-widgets" class="grid grid-cols-2 gap-3 mt-6">
-                        <button id="btn-show-tribe" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press">
+                        <button id="btn-show-tribe" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press text-left">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Tribe</span>
                             <span id="display-tribe" class="text-sm font-black text-blue-600">None</span>
                         </button>
-                        <button id="btn-show-apt" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press">
+                        <button id="btn-show-apt" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press text-left">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Apt</span>
                             <span id="display-apt" class="text-sm font-black text-blue-600">None</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Admin Section -->
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
                     <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
                     <div class="grid grid-cols-2 gap-3">
@@ -104,7 +101,7 @@
                     </div>
                 </div>
 
-                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase">Log Out</button>
+                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase btn-press">Log Out</button>
             </div>
 
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
@@ -125,7 +122,16 @@
         let db, auth, currentUserData = null;
         let allMembers = [], allEvents = [];
 
-        // UI HELPERS
+        function getCurrentTimeStr() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        }
+
+        function isAfter(timeA, timeB) {
+            if (!timeA || !timeB) return false;
+            return timeA >= timeB;
+        }
+
         const modal = {
             el: document.getElementById('modal-overlay'),
             title: document.getElementById('modal-title'),
@@ -140,30 +146,19 @@
             hide: function() { this.el.style.display = 'none'; }
         };
 
-        // FIREBASE SETUP
-        function parseConfig(input) {
-            try {
-                const match = input.match(/\{[\s\S]*\}/);
-                if (!match) return null;
-                let str = match[0].replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-                const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-                const config = {};
-                keys.forEach(key => {
-                    const regex = new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`);
-                    const valMatch = str.match(regex);
-                    if (valMatch) config[key] = valMatch[1];
-                });
-                return (config.apiKey && config.projectId) ? config : null;
-            } catch (e) { return null; }
-        }
-
         async function initFirebase(config) {
             try {
                 const app = initializeApp(config);
                 auth = getAuth(app);
                 db = getFirestore(app);
                 await signInAnonymously(auth);
-                onAuthStateChanged(auth, (u) => { if (u) { document.getElementById('setup-overlay').style.display = 'none'; syncData(); } });
+                onAuthStateChanged(auth, (u) => { 
+                    if (u) { 
+                        document.getElementById('setup-overlay').style.display = 'none'; 
+                        syncData(); 
+                        startClock();
+                    } 
+                });
             } catch (err) {
                 localStorage.removeItem('glimpse_db_config');
                 document.getElementById('setup-overlay').style.display = 'flex';
@@ -171,79 +166,69 @@
         }
 
         function syncData() {
-            if (!db) return;
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
                 allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSchedule();
-            });
+            }, (err) => console.error(err));
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
                 allMembers = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                checkUserIdentity();
-            });
+            }, (err) => console.error(err));
         }
 
-        function checkUserIdentity() {
-            const currentName = document.getElementById('user-input').value.trim().toUpperCase();
-            if(!currentName) return;
-            currentUserData = allMembers.find(m => m.name.toUpperCase() === currentName);
-            if(currentUserData) {
-                document.getElementById('display-tribe').innerText = currentUserData.tribe || "None";
-                document.getElementById('display-apt').innerText = currentUserData.apt || "None";
-            }
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
+                renderSchedule(); 
+            }, 1000);
         }
 
         function renderSchedule() {
             const feed = document.getElementById('schedule-feed');
-            feed.innerHTML = allEvents
-                .sort((a,b) => (a.time||'').localeCompare(b.time||''))
-                .map(e => `
-                    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative group">
-                        <div class="flex gap-2">
-                             <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
-                             ${e.revealTime ? `<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">Reveals ${e.revealTime}</span>` : ''}
-                        </div>
-                        <h3 class="text-xl font-black text-slate-800 mt-3">${e.name}</h3>
-                        <p class="text-xs text-slate-400 font-bold mt-1">${e.location || 'Main Venue'}</p>
-                    </div>
-                `).join('') || '<div class="text-center py-20 text-slate-300 font-bold">The schedule is currently empty.</div>';
-        }
-
-        // ADMIN ACTIONS
-        async function saveMember(id, data) {
-            const docId = id || data.name.toLowerCase().replace(/\s+/g, '-');
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', docId), data);
-            modal.hide();
-        }
-
-        async function saveEvent(id, data) {
-            const docId = id || Date.now().toString();
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', docId), data);
-            modal.hide();
-        }
-
-        // MODAL GENERATORS
-        function openMemberManager() {
-            const listHtml = allMembers.map(m => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                    <div>
-                        <div class="font-black text-slate-800">${m.name}</div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase">${m.tribe} • Apt ${m.apt}</div>
-                    </div>
-                    <button onclick="editMember('${m.id}')" class="text-blue-600 text-xs font-black p-2">Edit</button>
-                </div>
-            `).join('');
+            const nowTime = getCurrentTimeStr();
             
-            modal.show("Manage Members", 
-                `<button id="btn-add-member" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-4">+ Add Member</button>
-                 <div class="space-y-2">${listHtml}</div>`
-            );
-            document.getElementById('btn-add-member').onclick = () => openMemberForm();
+            const activeEvents = allEvents.filter(e => {
+                if (!e.endTime) return true;
+                return !isAfter(nowTime, e.endTime);
+            });
+
+            feed.innerHTML = activeEvents
+                .sort((a,b) => (a.time||'').localeCompare(b.time||''))
+                .map(e => {
+                    const isLocked = e.revealTime && !isAfter(nowTime, e.revealTime);
+                    
+                    return `
+                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden ${!isLocked ? 'reveal-anim' : ''}">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
+                                ${isLocked ? '<span class="text-xs">🔒</span>' : ''}
+                            </div>
+                            
+                            <h3 class="text-xl font-black text-slate-800 mt-3">
+                                ${isLocked ? '<span class="text-slate-300 italic">Mystery Event</span>' : e.name}
+                            </h3>
+                            
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="text-xs ${isLocked ? 'text-slate-300' : 'text-slate-400'} font-bold">
+                                    ${isLocked ? '???' : (e.location || 'Main Venue')}
+                                </span>
+                            </div>
+
+                            ${isLocked ? `
+                                <div class="mt-4 pt-4 border-t border-slate-50">
+                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-blue-400 h-full w-1/3"></div>
+                                    </div>
+                                    <p class="text-[9px] font-black text-slate-400 uppercase mt-2">Reveals at ${e.revealTime}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('') || '<div class="text-center py-20 text-slate-300 font-bold">No active events right now.</div>';
         }
 
-        window.editMember = (id) => {
-            const m = allMembers.find(x => x.id === id);
-            openMemberForm(m);
-        };
+        window.editMember = (id) => openMemberForm(allMembers.find(x => x.id === id));
+        window.editEvent = (id) => openEventForm(allEvents.find(x => x.id === id));
 
         function openMemberForm(m = null) {
             modal.show(m ? "Edit Member" : "New Member", `
@@ -257,68 +242,41 @@
                 ${m ? `<button id="btn-del-member" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
             `);
             
-            document.getElementById('btn-submit-member').onclick = () => {
-                saveMember(m?.id, {
+            document.getElementById('btn-submit-member').onclick = async () => {
+                const data = {
                     name: document.getElementById('f-name').value,
                     tribe: document.getElementById('f-tribe').value,
                     apt: document.getElementById('f-apt').value
-                });
+                };
+                const docId = m?.id || data.name.toLowerCase().replace(/\s+/g, '-');
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', docId), data);
+                modal.hide();
             };
             if(m) {
                 document.getElementById('btn-del-member').onclick = async () => {
-                    if(confirm("Delete this member?")) {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id));
-                        modal.hide();
-                    }
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id));
+                    modal.hide();
                 };
             }
         }
 
-        function openEventManager() {
-            const listHtml = allEvents.sort((a,b) => a.time.localeCompare(b.time)).map(e => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                    <div>
-                        <div class="font-black text-slate-800">${e.name}</div>
-                        <div class="text-[10px] text-slate-400 font-bold uppercase">${e.time} @ ${e.location}</div>
-                    </div>
-                    <button onclick="editEvent('${e.id}')" class="text-blue-600 text-xs font-black p-2">Edit</button>
-                </div>
-            `).join('');
-            
-            modal.show("Manage Events", 
-                `<button id="btn-add-event" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-4">+ Add Event</button>
-                 <div class="space-y-2">${listHtml}</div>`
-            );
-            document.getElementById('btn-add-event').onclick = () => openEventForm();
-        }
-
-        window.editEvent = (id) => {
-            const e = allEvents.find(x => x.id === id);
-            openEventForm(e);
-        };
-
         function openEventForm(e = null) {
             modal.show(e ? "Edit Event" : "New Event", `
                 <div class="space-y-4">
-                    <div>
-                        <label class="text-[9px] font-black uppercase ml-1 text-slate-400">Basic Info</label>
-                        <input id="e-name" class="input-pill mt-1" placeholder="Event Name" value="${e?.name || ''}">
-                    </div>
-                    <div>
-                        <input id="e-loc" class="input-pill" placeholder="Location" value="${e?.location || ''}">
-                    </div>
+                    <input id="e-name" class="input-pill" placeholder="Event Name" value="${e?.name || ''}">
+                    <input id="e-loc" class="input-pill" placeholder="Location" value="${e?.location || ''}">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="text-[9px] font-black uppercase ml-1 text-slate-400">Reveal Time</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Reveal Time</label>
                             <input id="e-reveal" type="time" class="input-pill" value="${e?.revealTime || ''}">
                         </div>
                         <div>
-                            <label class="text-[9px] font-black uppercase ml-1 text-slate-400">Set Time</label>
+                            <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Start Time</label>
                             <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
                         </div>
                     </div>
                     <div>
-                        <label class="text-[9px] font-black uppercase ml-1 text-slate-400">End Time</label>
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1">End Time (Auto-Remove)</label>
                         <input id="e-end" type="time" class="input-pill" value="${e?.endTime || ''}">
                     </div>
                 </div>
@@ -327,55 +285,29 @@
                 ${e ? `<button id="btn-del-event" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
             `);
             
-            document.getElementById('btn-submit-event').onclick = () => {
-                saveEvent(e?.id, {
+            document.getElementById('btn-submit-event').onclick = async () => {
+                const data = {
                     name: document.getElementById('e-name').value,
                     location: document.getElementById('e-loc').value,
                     time: document.getElementById('e-time').value,
                     endTime: document.getElementById('e-end').value,
                     revealTime: document.getElementById('e-reveal').value
-                });
+                };
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e?.id || Date.now().toString()), data);
+                modal.hide();
             };
             if(e) {
                 document.getElementById('btn-del-event').onclick = async () => {
-                    if(confirm("Delete this event?")) {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
-                        modal.hide();
-                    }
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
+                    modal.hide();
                 };
             }
         }
 
-        function showDiscovery(type) {
-            if(!currentUserData || !currentUserData[type]) return;
-            const target = currentUserData[type];
-            const matching = allMembers.filter(m => m[type] === target);
-            
-            const listHtml = matching.map(m => `
-                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                    <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs shadow-sm">👤</div>
-                    <div class="font-bold text-slate-800">${m.name}</div>
-                </div>
-            `).join('');
-
-            modal.show(`Same ${type === 'tribe' ? 'Tribe' : 'Apartment'}`, `
-                <div class="bg-blue-600 p-4 rounded-2xl text-white mb-4">
-                    <div class="text-[10px] uppercase font-black opacity-70">${type}</div>
-                    <div class="text-xl font-black">${target}</div>
-                </div>
-                <div class="space-y-2">${listHtml}</div>
-            `);
-        }
-
-        // INITIALIZATION
-        const storedConfig = localStorage.getItem('glimpse_db_config');
-        if (storedConfig) initFirebase(JSON.parse(storedConfig));
-        else document.getElementById('setup-overlay').style.display = 'flex';
-
-        // EVENT LISTENERS
         document.getElementById('btn-save-config').onclick = () => {
-            const parsed = parseConfig(document.getElementById('config-input').value);
-            if (parsed) { localStorage.setItem('glimpse_db_config', JSON.stringify(parsed)); location.reload(); }
+            const val = document.getElementById('config-input').value;
+            const match = val.match(/\{[\s\S]*\}/);
+            if (match) { localStorage.setItem('glimpse_db_config', match[0]); location.reload(); }
         };
 
         document.getElementById('btn-enter').onclick = () => {
@@ -387,31 +319,64 @@
             const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
             document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
             
-            checkUserIdentity();
+            currentUserData = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
+            if(currentUserData) {
+                document.getElementById('display-tribe').innerText = currentUserData.tribe || "None";
+                document.getElementById('display-apt').innerText = currentUserData.apt || "None";
+            }
+
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
         };
 
-        document.getElementById('btn-logout').onclick = () => {
-            document.getElementById('app-view').style.display = 'none';
-            document.getElementById('gateway-view').style.display = 'block';
-            document.getElementById('user-input').value = "";
-            currentUserData = null;
+        document.getElementById('btn-logout').onclick = () => location.reload();
+        document.getElementById('btn-close-modal').onclick = () => modal.hide();
+        
+        document.getElementById('btn-manage-members').onclick = () => {
+            const list = allMembers.map(m => `
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                    <div class="text-sm font-bold">${m.name}</div>
+                    <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
+                </div>
+            `).join('');
+            modal.show("Members", `<button id="m-add" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-4">+ Add</button>${list}`);
+            document.getElementById('m-add').onclick = () => openMemberForm();
         };
 
-        document.getElementById('btn-close-modal').onclick = () => modal.hide();
-        document.getElementById('btn-manage-members').onclick = () => openMemberManager();
-        document.getElementById('btn-manage-events').onclick = () => openEventManager();
-        document.getElementById('btn-show-tribe').onclick = () => showDiscovery('tribe');
-        document.getElementById('btn-show-apt').onclick = () => showDiscovery('apt');
+        document.getElementById('btn-manage-events').onclick = () => {
+            const list = allEvents.sort((a,b) => a.time.localeCompare(b.time)).map(e => `
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                    <div class="text-sm font-bold">${e.name} <span class="text-[9px] text-slate-400 block">${e.time} - ${e.endTime || 'No End'}</span></div>
+                    <button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
+                </div>
+            `).join('');
+            modal.show("Events", `<button id="e-add" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-4">+ Add</button>${list}`);
+            document.getElementById('e-add').onclick = () => openEventForm();
+        };
+
+        document.getElementById('btn-show-tribe').onclick = () => showMatches('tribe');
+        document.getElementById('btn-show-apt').onclick = () => showMatches('apt');
+
+        function showMatches(key) {
+            if(!currentUserData) return;
+            const val = currentUserData[key];
+            const matching = allMembers.filter(m => m[key] === val && m.name !== currentUserData.name);
+            const list = matching.map(m => `<div class="p-3 bg-slate-50 rounded-xl font-bold text-sm">👤 ${m.name}</div>`).join('');
+            modal.show(`Your ${key === 'tribe' ? 'Tribe' : 'Apartment'}`, `<div class="bg-blue-600 p-4 rounded-2xl text-white mb-4"><div class="text-xl font-black">${val}</div></div>${list || '<p class="text-slate-400 text-center">No other members found yet.</p>'}`);
+        }
 
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.onclick = () => {
-                const view = btn.dataset.view;
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n === btn));
-                document.querySelectorAll('.view-content').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+                document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
             };
         });
+
+        const cfg = localStorage.getItem('glimpse_db_config');
+        if (cfg) initFirebase(JSON.parse(cfg));
+        else document.getElementById('setup-overlay').style.display = 'flex';
     </script>
 </body>
 </html>
