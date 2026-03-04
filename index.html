@@ -20,10 +20,11 @@
         .input-pill { width: 100%; background: #f1f5f9; border: 2px solid transparent; border-radius: 1rem; padding: 0.75rem 1rem; outline: none; font-weight: 600; font-size: 14px; }
         .input-pill:focus { border-color: #2563eb; background: white; }
         
-        .reveal-anim { animation: revealScale 0.5s ease-out; }
-        @keyframes revealScale {
-            0% { transform: scale(0.95); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+        /* Smooth Fade In instead of jumping */
+        .reveal-anim { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -69,7 +70,6 @@
                         <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Live Schedule</p>
                         <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
                     </div>
-                    <div id="live-clock" class="text-right text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full">00:00:00</div>
                 </header>
                 <div id="schedule-feed" class="space-y-4"></div>
             </div>
@@ -121,6 +121,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v2';
         let db, auth, currentUserData = null;
         let allMembers = [], allEvents = [];
+        let lastRenderedTimeStr = "";
 
         function getCurrentTimeStr() {
             const now = new Date();
@@ -168,6 +169,7 @@
         function syncData() {
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
                 allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                lastRenderedTimeStr = ""; // Force re-render on data change
                 renderSchedule();
             }, (err) => console.error(err));
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
@@ -176,10 +178,13 @@
         }
 
         function startClock() {
+            // Update loop checks every second, but renderSchedule only fires on a new minute
             setInterval(() => {
-                const now = new Date();
-                document.getElementById('live-clock').innerText = now.toTimeString().split(' ')[0];
-                renderSchedule(); 
+                const nowTime = getCurrentTimeStr();
+                if (nowTime !== lastRenderedTimeStr) {
+                    renderSchedule();
+                    lastRenderedTimeStr = nowTime;
+                }
             }, 1000);
         }
 
@@ -192,13 +197,13 @@
                 return !isAfter(nowTime, e.endTime);
             });
 
-            feed.innerHTML = activeEvents
+            const html = activeEvents
                 .sort((a,b) => (a.time||'').localeCompare(b.time||''))
                 .map(e => {
                     const isLocked = e.revealTime && !isAfter(nowTime, e.revealTime);
                     
                     return `
-                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden ${!isLocked ? 'reveal-anim' : ''}">
+                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden reveal-anim">
                             <div class="flex justify-between items-center">
                                 <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
                                 ${isLocked ? '<span class="text-xs">🔒</span>' : ''}
@@ -224,7 +229,13 @@
                             ` : ''}
                         </div>
                     `;
-                }).join('') || '<div class="text-center py-20 text-slate-300 font-bold">No active events right now.</div>';
+                }).join('');
+
+            // Only update DOM if content has changed to prevent jitter
+            const newContent = html || '<div class="text-center py-20 text-slate-300 font-bold">No active events right now.</div>';
+            if (feed.innerHTML !== newContent) {
+                feed.innerHTML = newContent;
+            }
         }
 
         window.editMember = (id) => openMemberForm(allMembers.find(x => x.id === id));
@@ -344,7 +355,7 @@
         };
 
         document.getElementById('btn-manage-events').onclick = () => {
-            const list = allEvents.sort((a,b) => a.time.localeCompare(b.time)).map(e => `
+            const list = allEvents.sort((a,b) => (a.time||'').localeCompare(b.time||'')).map(e => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
                     <div class="text-sm font-bold">${e.name} <span class="text-[9px] text-slate-400 block">${e.time} - ${e.endTime || 'No End'}</span></div>
                     <button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
