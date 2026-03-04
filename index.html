@@ -9,12 +9,11 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; overflow-x: hidden; }
         .app-container { max-width: 450px; margin: 0 auto; min-height: 100vh; background: #ffffff; color: #0f172a; position: relative; }
-        .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); sticky; top: 0; z-index: 50; }
         .admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; padding: 20px; color: #0f172a; }
         .admin-modal.active { display: flex; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        input, select { border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px; width: 100%; outline: none; transition: border-color 0.2s; }
+        input, select { border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px; width: 100%; outline: none; transition: border-color 0.2s; color: #0f172a; }
         input:focus { border-color: #2563eb; }
         .shimmer { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shim 2s infinite; }
         @keyframes shim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -30,13 +29,13 @@
             <p class="text-slate-400 text-xs uppercase tracking-[0.4em] mb-12">RDS Experience</p>
             
             <div id="login-options" class="w-full space-y-4">
-                <button onclick="showLoginForm('attendee')" class="w-full py-5 bg-blue-600 rounded-2xl font-bold text-lg">Attendee Login</button>
-                <button onclick="showLoginForm('staff')" class="w-full py-5 border border-slate-700 rounded-2xl font-bold text-slate-400">Staff Portal</button>
+                <button onclick="showLoginForm('attendee')" class="w-full py-5 bg-blue-600 rounded-2xl font-bold text-lg active:scale-95 transition-transform">Attendee Login</button>
+                <button onclick="showLoginForm('staff')" class="w-full py-5 border border-slate-700 rounded-2xl font-bold text-slate-400 active:scale-95 transition-transform">Staff Portal</button>
             </div>
 
             <div id="login-form" class="w-full hidden space-y-4">
-                <input id="user-input" type="text" class="text-slate-900 font-bold" placeholder="Name or Passcode">
-                <button id="btn-submit" class="w-full py-5 bg-white text-slate-900 rounded-2xl font-bold">Enter Portal</button>
+                <input id="user-input" type="text" placeholder="Name or Passcode">
+                <button id="btn-submit" onclick="handleLoginSubmit()" class="w-full py-5 bg-white text-slate-900 rounded-2xl font-bold active:scale-95 transition-transform">Enter Portal</button>
                 <button onclick="resetLogin()" class="w-full text-slate-500 text-xs font-bold uppercase py-2">Back</button>
             </div>
         </div>
@@ -55,13 +54,12 @@
                 </div>
             </header>
 
-            <!-- TABS -->
             <main class="px-6">
                 <!-- Schedule View -->
                 <div id="tab-schedule" class="tab-content active">
                     <h3 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-6">Weekend Timeline</h3>
                     <div id="schedule-list" class="space-y-4">
-                        <!-- Items injected here -->
+                        <div class="p-8 text-center text-slate-300 font-bold">Connecting to servers...</div>
                     </div>
                 </div>
 
@@ -88,8 +86,8 @@
 
             <!-- NAVIGATION -->
             <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[240px] bg-slate-900/90 backdrop-blur-xl rounded-full p-2 flex justify-between shadow-2xl z-50">
-                <button onclick="switchTab('schedule')" class="nav-btn bg-white text-slate-900 w-24 py-3 rounded-full font-bold text-sm transition-all">Schedule</button>
-                <button onclick="switchTab('profile')" class="nav-btn text-white w-24 py-3 rounded-full font-bold text-sm transition-all">Profile</button>
+                <button id="nav-btn-schedule" onclick="switchTab('schedule')" class="nav-btn bg-white text-slate-900 w-24 py-3 rounded-full font-bold text-sm transition-all">Schedule</button>
+                <button id="nav-btn-profile" onclick="switchTab('profile')" class="nav-btn text-white w-24 py-3 rounded-full font-bold text-sm transition-all">Profile</button>
             </nav>
         </div>
     </div>
@@ -131,28 +129,28 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Config & State
+        // Global Setup
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v2';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v3';
 
         let userMode = 'attendee';
-        let currentUser = null;
         let events = [];
-        let members = [];
 
-        // --- LOGIN LOGIC ---
+        // --- UI FUNCTIONS ---
         window.showLoginForm = (mode) => {
             userMode = mode;
             document.getElementById('login-options').classList.add('hidden');
             document.getElementById('login-form').classList.remove('hidden');
-            document.getElementById('user-input').placeholder = mode === 'staff' ? 'Admin Passcode' : 'Your Name';
-            document.getElementById('user-input').type = mode === 'staff' ? 'password' : 'text';
+            const input = document.getElementById('user-input');
+            input.placeholder = mode === 'staff' ? 'Admin Passcode' : 'Your Name';
+            input.type = mode === 'staff' ? 'password' : 'text';
+            input.focus();
         };
 
         window.resetLogin = () => {
@@ -160,16 +158,16 @@
             document.getElementById('login-form').classList.add('hidden');
         };
 
-        document.getElementById('btn-submit').onclick = async () => {
+        window.handleLoginSubmit = () => {
             const val = document.getElementById('user-input').value.trim();
             if(!val) return;
 
             if(userMode === 'staff' && val !== 'RDS12admin') {
-                alert('Invalid Passcode');
+                alert('Incorrect Admin Passcode');
                 return;
             }
 
-            // Enter App
+            // CRITICAL: Change UI immediately, then load data in background
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             document.getElementById('user-display-name').innerText = userMode === 'staff' ? 'Admin' : val;
@@ -179,42 +177,63 @@
                 document.getElementById('admin-controls').classList.remove('hidden');
             }
 
-            initFirebase(val);
+            connectFirebase(val);
         };
 
-        // --- DATA LOGIC ---
-        async function initFirebase(userName) {
-            await signInAnonymously(auth);
+        window.toggleModal = (id, show) => {
+            document.getElementById(id).classList.toggle('active', show);
+        };
+
+        window.switchTab = (tab) => {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
             
-            onAuthStateChanged(auth, (user) => {
-                if(!user) return;
-                currentUser = user;
-
-                // Sync Events
-                const qEvents = collection(db, 'artifacts', appId, 'public', 'data', 'events');
-                onSnapshot(qEvents, (snap) => {
-                    events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderEvents();
-                }, (err) => console.error("Event Sync Error:", err));
-
-                // Sync Members
-                const qMembers = collection(db, 'artifacts', appId, 'public', 'data', 'members');
-                onSnapshot(qMembers, (snap) => {
-                    members = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const profile = members.find(m => m.name.toLowerCase() === userName.toLowerCase());
-                    if(profile) {
-                        document.getElementById('stat-tribe').innerText = profile.tribe;
-                        document.getElementById('stat-apt').innerText = `Apt ${profile.apartment}`;
-                    }
-                }, (err) => console.error("Member Sync Error:", err));
+            const btns = document.querySelectorAll('.nav-btn');
+            btns.forEach(b => {
+                b.classList.remove('bg-white', 'text-slate-900');
+                b.classList.add('text-white');
             });
+            document.getElementById(`nav-btn-${tab}`).classList.add('bg-white', 'text-slate-900');
+        };
+
+        // --- FIREBASE SYNC ---
+        async function connectFirebase(userName) {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if(!user) return;
+
+                    // Sync Events
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
+                        events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderEvents();
+                    }, (err) => console.error("Event error", err));
+
+                    // Sync Members
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
+                        const members = snap.docs.map(doc => doc.data());
+                        const profile = members.find(m => m.name.toLowerCase() === userName.toLowerCase());
+                        if(profile) {
+                            document.getElementById('stat-tribe').innerText = profile.tribe;
+                            document.getElementById('stat-apt').innerText = `Apt ${profile.apartment}`;
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error("Firebase connection failed", error);
+                document.getElementById('schedule-list').innerHTML = `<div class="p-8 text-center text-red-400">Connection Error. Please refresh.</div>`;
+            }
         }
 
-        // --- RENDER LOGIC ---
         function renderEvents() {
             const list = document.getElementById('schedule-list');
             if(events.length === 0) {
-                list.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold">No events scheduled yet.</div>`;
+                list.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold">The schedule is currently empty.</div>`;
                 return;
             }
 
@@ -246,25 +265,7 @@
             }).join('');
         }
 
-        // --- ACTION LOGIC ---
-        window.toggleModal = (id, show) => {
-            document.getElementById(id).classList.toggle('active', show);
-        };
-
-        window.switchTab = (tab) => {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`tab-${tab}`).classList.add('active');
-            
-            // UI Toggle
-            const btns = document.querySelectorAll('.nav-btn');
-            btns.forEach(b => {
-                b.classList.remove('bg-white', 'text-slate-900');
-                b.classList.add('text-white');
-            });
-            event.currentTarget.classList.add('bg-white', 'text-slate-900');
-        };
-
-        // Form Submits
+        // --- SUBMIT ACTIONS ---
         document.getElementById('event-form').onsubmit = async (e) => {
             e.preventDefault();
             const data = {
@@ -273,9 +274,11 @@
                 reveal: document.getElementById('ev-reveal').value,
                 start: document.getElementById('ev-start').value
             };
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), data);
-            e.target.reset();
-            toggleModal('event-modal', false);
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), data);
+                e.target.reset();
+                toggleModal('event-modal', false);
+            } catch (err) { alert("Failed to save event. Check connection."); }
         };
 
         document.getElementById('member-form').onsubmit = async (e) => {
@@ -285,11 +288,12 @@
                 tribe: document.getElementById('mem-tribe').value,
                 apartment: document.getElementById('mem-apt').value
             };
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), data);
-            e.target.reset();
-            toggleModal('member-modal', false);
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), data);
+                e.target.reset();
+                toggleModal('member-modal', false);
+            } catch (err) { alert("Failed to save member."); }
         };
-
     </script>
 </body>
 </html>
