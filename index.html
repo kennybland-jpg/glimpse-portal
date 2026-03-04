@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
         body { 
             font-family: 'Inter', sans-serif; 
             background-color: #020617; 
@@ -18,52 +19,57 @@
             overflow: hidden; 
         }
 
+        .glass-card { 
+            background: white;
+            width: 90%;
+            max-width: 380px;
+            border-radius: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            position: relative;
+        }
+
         /* The viewport for the card contents */
         .card-viewport {
             width: 100%;
             overflow: hidden;
-            position: relative;
         }
 
         /* The sliding container */
         .card-slider {
             display: flex;
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             width: 200%; /* Two screens wide */
         }
 
         .card-screen {
-            width: 50%; /* Each screen takes half the slider (one full card width) */
-            flex-shrink: 0;
+            width: 50%; /* Each screen takes exactly 100% of parent width */
             padding: 2.5rem;
+            box-sizing: border-box;
         }
 
-        /* View States */
-        .show-login { transform: translateX(-50%); }
+        /* View State Class */
+        .active-login { transform: translateX(-50%); }
 
-        .glass-card { 
-            background: white;
-            width: 100%;
-            max-width: 380px;
-            border-radius: 3rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        .btn-tap { 
+            transition: transform 0.1s, background-color 0.2s; 
+            cursor: pointer; 
+            -webkit-tap-highlight-color: transparent;
         }
-
-        .btn-tap { transition: transform 0.1s, background-color 0.2s; cursor: pointer; }
-        .btn-tap:active { transform: scale(0.96); }
+        .btn-tap:active { transform: scale(0.95); }
 
         #app-interface {
             display: none;
             position: fixed;
             inset: 0;
             background: #f8fafc;
-            z-index: 1000;
+            z-index: 9999;
         }
     </style>
 </head>
 <body class="text-slate-900">
 
-    <!-- GATEWAY CARD (Contains both Landing and Login) -->
+    <!-- GATEWAY CARD -->
     <div id="gateway-card" class="glass-card">
         <div class="card-viewport">
             <div id="slider" class="card-slider">
@@ -75,10 +81,10 @@
                     <p class="text-slate-400 mb-10 font-bold italic text-xs uppercase tracking-widest">RDS Preview Weekend</p>
                     
                     <div class="w-full space-y-3">
-                        <button onclick="goToLogin('attendee')" class="btn-tap w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-blue-500/20">
+                        <button id="btn-attendee" class="btn-tap w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-blue-500/20">
                             Attendee Login
                         </button>
-                        <button onclick="goToLogin('admin')" class="btn-tap w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl font-bold">
+                        <button id="btn-staff" class="btn-tap w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl font-bold">
                             Staff Portal
                         </button>
                     </div>
@@ -91,7 +97,7 @@
                             <h2 id="login-title" class="text-2xl font-black text-slate-900 tracking-tight">Login</h2>
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Authorized Access</p>
                         </div>
-                        <button onclick="goBack()" class="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600">
+                        <button id="btn-back" class="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600">
                             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
                         </button>
                     </div>
@@ -100,9 +106,9 @@
                         <div>
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Identity</label>
                             <input id="login-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-semibold text-slate-800" placeholder="Enter name..." />
-                            <p id="error-msg" class="text-red-500 text-[10px] font-black mt-3 ml-1 hidden uppercase">Access Denied</p>
+                            <p id="error-msg" class="text-red-500 text-[10px] font-black mt-3 ml-1 opacity-0 uppercase">Access Denied</p>
                         </div>
-                        <button id="submit-btn" onclick="handleLogin()" class="btn-tap w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">
+                        <button id="btn-submit" class="btn-tap w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">
                             Enter Portal
                         </button>
                     </div>
@@ -112,27 +118,85 @@
         </div>
     </div>
 
-    <!-- MAIN APP INTERFACE (Revealed after Login) -->
+    <!-- APP INTERFACE -->
     <div id="app-interface">
         <div class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-2xl overflow-y-auto">
             <header class="px-8 pt-16 pb-6 bg-white sticky top-0 z-20">
                 <p class="text-[10px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Feed</p>
                 <h1 class="text-3xl font-black text-slate-900">Hey, <span id="user-display-name">User</span></h1>
             </header>
-            
             <main class="flex-1 px-8 pb-32">
                 <div id="schedule-section" class="space-y-4">
                     <h3 class="text-xs font-black text-slate-300 uppercase tracking-widest">Schedule</h3>
-                    <div id="event-list" class="space-y-4"></div>
+                    <div id="event-list" class="space-y-4">
+                        <div class="animate-pulse flex space-x-4">
+                            <div class="flex-1 space-y-4 py-1">
+                                <div class="h-10 bg-slate-100 rounded-xl w-3/4"></div>
+                                <div class="h-10 bg-slate-100 rounded-xl"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
-
             <nav class="fixed bottom-8 left-1/2 -translate-x-1/2 w-64 bg-slate-900 text-white rounded-full p-2 flex justify-around shadow-2xl">
                 <div class="p-3 bg-blue-600 rounded-full">📅</div>
                 <div onclick="location.reload()" class="p-3 text-slate-400">🚪</div>
             </nav>
         </div>
     </div>
+
+    <script>
+        // Use standard script for UI to ensure availability
+        const slider = document.getElementById('slider');
+        const loginTitle = document.getElementById('login-title');
+        const loginInput = document.getElementById('login-input');
+        const errorMsg = document.getElementById('error-msg');
+        let currentMode = 'attendee';
+
+        // Direct event listeners are the most reliable way in iframes
+        document.getElementById('btn-attendee').addEventListener('click', () => {
+            currentMode = 'attendee';
+            loginTitle.innerText = 'Login';
+            loginInput.placeholder = 'Full Name';
+            loginInput.type = 'text';
+            slider.classList.add('active-login');
+        });
+
+        document.getElementById('btn-staff').addEventListener('click', () => {
+            currentMode = 'admin';
+            loginTitle.innerText = 'Staff Portal';
+            loginInput.placeholder = 'Passcode';
+            loginInput.type = 'password';
+            slider.classList.add('active-login');
+        });
+
+        document.getElementById('btn-back').addEventListener('click', () => {
+            slider.classList.remove('active-login');
+            errorMsg.style.opacity = '0';
+        });
+
+        document.getElementById('btn-submit').addEventListener('click', () => {
+            const val = loginInput.value.trim();
+            if(!val) return;
+
+            if(currentMode === 'admin') {
+                if(val === 'RDS12admin') {
+                    window.dispatchEvent(new CustomEvent('login-success', { detail: { name: 'Staff' } }));
+                } else {
+                    errorMsg.style.opacity = '1';
+                }
+            } else {
+                window.dispatchEvent(new CustomEvent('login-success', { detail: { name: val } }));
+            }
+        });
+
+        // Listen for the app launch signal from the Firebase module
+        window.addEventListener('login-success', (e) => {
+            document.getElementById('user-display-name').innerText = e.detail.name;
+            document.getElementById('gateway-card').style.display = 'none';
+            document.getElementById('app-interface').style.display = 'block';
+        });
+    </script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -145,59 +209,35 @@
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
 
-        let currentMode = 'attendee';
+        // Connect Firebase to UI
+        window.addEventListener('login-success', async () => {
+            try {
+                await signInAnonymously(auth);
+                
+                // Real-time schedule
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snapshot) => {
+                    const events = snapshot.docs.map(doc => doc.data()).sort((a,b) => a.time.localeCompare(b.time));
+                    const list = document.getElementById('event-list');
+                    
+                    if (events.length === 0) {
+                        list.innerHTML = `<p class="text-slate-400 text-sm font-medium italic">No events scheduled yet.</p>`;
+                        return;
+                    }
 
-        // --- NAVIGATION LOGIC ---
-        window.goToLogin = (mode) => {
-            currentMode = mode;
-            document.getElementById('login-title').innerText = mode === 'admin' ? 'Staff Portal' : 'Login';
-            document.getElementById('login-input').placeholder = mode === 'admin' ? 'Passcode' : 'Full Name';
-            document.getElementById('login-input').type = mode === 'admin' ? 'password' : 'text';
-            document.getElementById('login-input').value = '';
-            document.getElementById('error-msg').classList.add('hidden');
-            document.getElementById('slider').classList.add('show-login');
-        };
-
-        window.goBack = () => {
-            document.getElementById('slider').classList.remove('show-login');
-        };
-
-        window.handleLogin = async () => {
-            const val = document.getElementById('login-input').value.trim();
-            if(!val) return;
-
-            if(currentMode === 'admin') {
-                if(val === 'RDS12admin') {
-                    launchApp('Staff');
-                } else {
-                    document.getElementById('error-msg').classList.remove('hidden');
-                }
-            } else {
-                launchApp(val);
-            }
-        };
-
-        async function launchApp(name) {
-            document.getElementById('user-display-name').innerText = name;
-            document.getElementById('gateway-card').style.display = 'none';
-            document.getElementById('app-interface').style.display = 'block';
-            
-            await signInAnonymously(auth);
-            
-            // Fetch Data
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), s => {
-                const events = s.docs.map(d => d.data()).sort((a,b) => a.time.localeCompare(b.time));
-                document.getElementById('event-list').innerHTML = events.map(e => `
-                    <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[10px] font-black text-blue-600">${e.time}</span>
-                            <span class="text-[9px] font-bold text-slate-400 uppercase">${e.location || 'Main Hall'}</span>
+                    list.innerHTML = events.map(e => `
+                        <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100 transition-all hover:bg-white hover:shadow-md">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[10px] font-black text-blue-600">${e.time}</span>
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${e.location || 'RDS'}</span>
+                            </div>
+                            <h4 class="font-black text-slate-900">${e.name}</h4>
                         </div>
-                        <h4 class="font-black text-slate-900">${e.name}</h4>
-                    </div>
-                `).join('');
-            });
-        }
+                    `).join('');
+                });
+            } catch (err) {
+                console.error("Auth failed", err);
+            }
+        });
     </script>
 </body>
 </html>
