@@ -15,42 +15,38 @@
         .nav-item.active { background-color: #2563eb; color: white; transform: translateY(-4px); }
         .view-content { display: none; }
         .view-content.active { display: block; }
-        #setup-overlay { display: none; position: fixed; inset: 0; background: #020617; z-index: 1000; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+        #setup-overlay { display: none; position: fixed; inset: 0; background: #020617; z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .admin-widget { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
     </style>
 </head>
 <body>
 
-    <!-- Ultra-Resilient Firebase Setup Wizard -->
+    <!-- ONE-TIME SETUP OVERLAY (Only shows if config is missing) -->
     <div id="setup-overlay">
         <div class="glass-card">
-            <h2 class="text-2xl font-black mb-1">Database Setup</h2>
-            <p class="text-[11px] text-slate-500 mb-6 font-bold uppercase tracking-widest">Step 1: Link your Project</p>
+            <h2 class="text-2xl font-black mb-1">Admin Configuration</h2>
+            <p class="text-[11px] text-slate-500 mb-6 font-bold uppercase tracking-widest">Connect your Firebase Project</p>
             
             <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl mb-6">
                 <p class="text-[11px] text-blue-800 leading-relaxed">
-                    <b>Instructions:</b><br>
-                    1. Go to Firebase Project Settings.<br>
-                    2. Select the <b>"npm"</b> tab under "SDK setup and configuration".<br>
-                    3. Copy the <b>entire</b> code block and paste it below.
+                    <b>Admin Only:</b> Once connected, attendees won't see this screen.<br>
+                    Paste the <b>"npm"</b> config tab code below.
                 </p>
             </div>
 
             <textarea id="config-input" 
                 class="w-full h-40 bg-slate-100 rounded-2xl p-4 font-mono text-[10px] mb-4 outline-none focus:ring-2 ring-blue-500 border-none" 
-                placeholder='Paste the config code here...'></textarea>
+                placeholder='const firebaseConfig = { ... };'></textarea>
             
-            <button id="btn-save-config" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg btn-press">Connect & Launch</button>
+            <button id="btn-save-config" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg btn-press">Initialize Database</button>
             
             <div id="parse-error" class="hidden mt-4 p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold text-center">
-                Invalid format. Please ensure you copied the whole object.
+                Invalid format. Please check the config and try again.
             </div>
-
-            <button id="btn-clear-cache" class="w-full mt-4 py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Reset Local Cache</button>
         </div>
     </div>
 
-    <!-- GATEWAY -->
+    <!-- GATEWAY (Visible to everyone once DB is set up) -->
     <div id="gateway-view" class="glass-card">
         <div class="flex flex-col items-center text-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center shadow-xl text-2xl text-white">✨</div>
@@ -60,20 +56,23 @@
                 <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center uppercase" placeholder="Enter your name" />
                 <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">Access Portal</button>
             </div>
+            <button id="btn-admin-reset" class="mt-8 text-[9px] text-slate-300 font-bold uppercase tracking-widest hover:text-red-400 transition-colors">Reset DB Connection</button>
         </div>
     </div>
 
-    <!-- MAIN APP (Same as before) -->
+    <!-- MAIN APP -->
     <div id="app-view">
         <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
+            <!-- Schedule View -->
             <div id="view-schedule" class="view-content active">
                 <header class="mb-10 pt-8">
-                    <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Welcome Back</p>
+                    <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Live Schedule</p>
                     <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
                 </header>
                 <div id="schedule-feed" class="space-y-4"></div>
             </div>
 
+            <!-- Profile/Admin View -->
             <div id="view-profile" class="view-content">
                 <header class="mb-10 pt-8"><h1 class="text-4xl font-black text-slate-900">Account</h1></header>
                 <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100">
@@ -81,18 +80,19 @@
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                 </div>
 
-                <!-- Admin Section -->
+                <!-- Admin Section (Hidden by default) -->
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
                     <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
                     <div class="grid grid-cols-2 gap-3">
-                        <button id="btn-manage-members" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">👥</span><span class="text-[11px] font-black uppercase">Members</span></button>
-                        <button id="btn-manage-events" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">🗓️</span><span class="text-[11px] font-black uppercase">Events</span></button>
+                        <button class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">👥</span><span class="text-[11px] font-black uppercase">Members</span></button>
+                        <button class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">🗓️</span><span class="text-[11px] font-black uppercase">Events</span></button>
                     </div>
                 </div>
 
-                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase">Logout & Reset Config</button>
+                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase">Switch User</button>
             </div>
 
+            <!-- Persistent Bottom Nav -->
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
                 <div class="max-w-[200px] mx-auto bg-slate-900 rounded-full p-2 flex justify-around shadow-2xl">
                     <button data-view="schedule" class="nav-item active w-14 h-14 flex items-center justify-center rounded-full text-xl">📅</button>
@@ -105,39 +105,26 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, addDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v1';
-        let db, auth, user;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v2';
+        let db, auth;
 
-        // --- THE "SUPER PARSER" ---
+        // Ultra-resilient parsing of the Firebase Config
         function parseConfig(input) {
             try {
-                // Find anything that looks like an object { ... }
                 const match = input.match(/\{[\s\S]*\}/);
                 if (!match) return null;
-                
-                let str = match[0];
-                
-                // 1. Remove comments
-                str = str.replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-                
-                // 2. Extract key-value pairs manually to avoid JSON.parse strictness
+                let str = match[0].replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
                 const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
                 const config = {};
-                
                 keys.forEach(key => {
                     const regex = new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`);
                     const valMatch = str.match(regex);
                     if (valMatch) config[key] = valMatch[1];
                 });
-
-                // Validate we got the essentials
-                if (config.apiKey && config.projectId && config.appId) return config;
-                return null;
-            } catch (e) {
-                return null;
-            }
+                return (config.apiKey && config.projectId) ? config : null;
+            } catch (e) { return null; }
         }
 
         async function initFirebase(config) {
@@ -149,20 +136,19 @@
                 await signInAnonymously(auth);
                 onAuthStateChanged(auth, (u) => {
                     if (u) {
-                        user = u;
                         document.getElementById('setup-overlay').style.display = 'none';
                         loadEvents();
                     }
                 });
             } catch (err) {
                 console.error(err);
-                document.getElementById('parse-error').classList.remove('hidden');
+                localStorage.removeItem('glimpse_db_config');
+                document.getElementById('setup-overlay').style.display = 'flex';
             }
         }
 
         function loadEvents() {
             if (!db) return;
-            // Using Rule 2: Simple query, fetch all
             const q = collection(db, 'artifacts', appId, 'public', 'data', 'events');
             onSnapshot(q, (snap) => {
                 const list = snap.docs.map(d => d.data());
@@ -170,55 +156,68 @@
                     .sort((a,b) => (a.time||'').localeCompare(b.time||''))
                     .map(e => `
                         <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || '??:??'}</span>
+                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
                             <h3 class="text-xl font-black text-slate-800 mt-3">${e.name}</h3>
-                            <p class="text-xs text-slate-400 font-bold mt-1">${e.location || 'Main Hall'}</p>
+                            <p class="text-xs text-slate-400 font-bold mt-1">${e.location || 'Main Venue'}</p>
                         </div>
-                    `).join('') || '<div class="text-center py-10 text-slate-300 font-bold">No events posted yet.</div>';
-            }, (err) => console.error("Firestore Error:", err));
+                    `).join('') || '<div class="text-center py-20 text-slate-300 font-bold">The schedule is currently empty.</div>';
+            }, (err) => console.warn("Waiting for database permissions or data..."));
         }
 
-        // Setup logic
-        const stored = localStorage.getItem('glimpse_config_v2');
-        if (stored) {
-            initFirebase(JSON.parse(stored));
+        // Initialize state
+        const storedConfig = localStorage.getItem('glimpse_db_config');
+        if (storedConfig) {
+            initFirebase(JSON.parse(storedConfig));
         } else {
             document.getElementById('setup-overlay').style.display = 'flex';
         }
 
+        // Logic: Save Config
         document.getElementById('btn-save-config').onclick = () => {
-            const raw = document.getElementById('config-input').value;
-            const parsed = parseConfig(raw);
+            const parsed = parseConfig(document.getElementById('config-input').value);
             if (parsed) {
-                localStorage.setItem('glimpse_config_v2', JSON.stringify(parsed));
+                localStorage.setItem('glimpse_db_config', JSON.stringify(parsed));
                 location.reload();
             } else {
                 document.getElementById('parse-error').classList.remove('hidden');
             }
         };
 
-        document.getElementById('btn-clear-cache').onclick = () => {
-            localStorage.clear();
-            location.reload();
-        };
-
+        // Logic: Enter Portal
         document.getElementById('btn-enter').onclick = () => {
             const name = document.getElementById('user-input').value.trim();
             if (!name) return;
             const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
-            document.getElementById('display-name').innerText = isAdmin ? 'Admin' : name;
-            document.getElementById('profile-name').innerText = isAdmin ? 'Admin' : name;
-            if (isAdmin) document.getElementById('admin-controls').classList.remove('hidden');
+            
+            document.getElementById('display-name').innerText = name;
+            document.getElementById('profile-name').innerText = name;
+            
+            if (isAdmin) {
+                document.getElementById('admin-controls').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-controls').classList.add('hidden');
+            }
+
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
         };
 
+        // Logic: Logout (Just returns to gateway)
         document.getElementById('btn-logout').onclick = () => {
-            localStorage.clear();
-            location.reload();
+            document.getElementById('app-view').style.display = 'none';
+            document.getElementById('gateway-view').style.display = 'block';
+            document.getElementById('user-input').value = "";
         };
 
-        // Navigation
+        // Admin Reset (Secret way to clear config)
+        document.getElementById('btn-admin-reset').onclick = () => {
+            if(confirm("This will disconnect the database for everyone on this browser. Continue?")) {
+                localStorage.removeItem('glimpse_db_config');
+                location.reload();
+            }
+        };
+
+        // Nav switch
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.onclick = () => {
                 const view = btn.dataset.view;
