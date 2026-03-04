@@ -17,7 +17,7 @@
         .view-content.active { display: block; }
         #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .admin-widget { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-        .input-pill { width: 100%; background: #f1f5f9; border: 2px solid transparent; border-radius: 1rem; padding: 0.75rem 1rem; outline: none; font-weight: 600; font-size: 14px; }
+        .input-pill { width: 100%; background: #f1f5f9; border: 2px solid transparent; border-radius: 1rem; padding: 0.75rem 1rem; outline: none; font-weight: 600; font-size: 14px; color: #1e293b; }
         .input-pill:focus { border-color: #2563eb; background: white; }
         
         .reveal-anim { animation: fadeIn 0.4s ease-out; }
@@ -76,14 +76,14 @@
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                     
                     <div id="attendee-widgets" class="grid grid-cols-2 gap-3 mt-6">
-                        <button id="btn-show-tribe" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press text-left">
+                        <div class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Tribe</span>
                             <span id="display-tribe" class="text-sm font-black text-blue-600">None</span>
-                        </button>
-                        <button id="btn-show-apt" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press text-left">
+                        </div>
+                        <div class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Apt</span>
                             <span id="display-apt" class="text-sm font-black text-blue-600">None</span>
-                        </button>
+                        </div>
                     </div>
                 </div>
 
@@ -111,17 +111,22 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /** * GLOBAL CONFIGURATION
-         * The __firebase_config is provided by the environment. 
-         * This ensures it works for everyone without manual entry.
-         */
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
-        
-        let db, auth, currentUserData = null;
+        // Hard-coded configuration from user
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPSo9wjrQsnrYfnN4a-STKJ43Avr5Et8A",
+            authDomain: "glimpse-2026.firebaseapp.com",
+            projectId: "glimpse-2026",
+            storageBucket: "glimpse-2026.firebasestorage.app",
+            messagingSenderId: "923394524187",
+            appId: "1:923394524187:web:5ac3d31b8ccb26058a24be",
+            measurementId: "G-EJCENYVW5S"
+        };
+
+        const appId = 'glimpse-2026';
+        let db, auth, currentUser = null;
         let allMembers = [], allEvents = [];
         let lastRenderedTimeStr = "";
 
@@ -156,15 +161,12 @@
             auth = getAuth(app);
             db = getFirestore(app);
 
-            // Handle Authentication
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
+            // Using Anonymous Auth as default for access
+            await signInAnonymously(auth);
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
+                    currentUser = user;
                     syncData();
                     startClock();
                 }
@@ -172,14 +174,18 @@
         }
 
         function syncData() {
-            // Real-time Schedule
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
+            if (!currentUser) return;
+
+            // Use the mandatory path structure for this environment
+            const eventsCol = collection(db, 'artifacts', appId, 'public', 'data', 'events');
+            const membersCol = collection(db, 'artifacts', appId, 'public', 'data', 'members');
+
+            onSnapshot(eventsCol, (snap) => {
                 allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSchedule();
             }, (err) => console.error("Event Sync Error:", err));
 
-            // Real-time Members
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
+            onSnapshot(membersCol, (snap) => {
                 allMembers = snap.docs.map(d => ({id: d.id, ...d.data()}));
             }, (err) => console.error("Member Sync Error:", err));
         }
@@ -229,7 +235,7 @@
             feed.innerHTML = html || '<div class="text-center py-20 text-slate-300 font-bold">No active events right now.</div>';
         }
 
-        // Exposed Admin Functions
+        // Global functions for modal actions
         window.editMember = (id) => openMemberForm(allMembers.find(x => x.id === id));
         window.editEvent = (id) => openEventForm(allEvents.find(x => x.id === id));
 
@@ -246,12 +252,14 @@
             `);
             
             document.getElementById('btn-submit-member').onclick = async () => {
+                const nameInput = document.getElementById('f-name').value.trim();
+                if(!nameInput) return;
                 const data = {
-                    name: document.getElementById('f-name').value,
+                    name: nameInput,
                     tribe: document.getElementById('f-tribe').value,
                     apt: document.getElementById('f-apt').value
                 };
-                const docId = m?.id || data.name.toLowerCase().replace(/\s+/g, '-');
+                const docId = m?.id || nameInput.toLowerCase().replace(/\s+/g, '-');
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', docId), data);
                 modal.hide();
             };
@@ -278,10 +286,14 @@
                             <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
                         </div>
                     </div>
-                    <input id="e-end" type="time" class="input-pill" value="${e?.endTime || ''}">
+                    <div>
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1">End Time</label>
+                        <input id="e-end" type="time" class="input-pill" value="${e?.endTime || ''}">
+                    </div>
                 </div>
             `, `
                 <button id="btn-submit-event" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save</button>
+                ${e ? `<button id="btn-del-event" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
             `);
             
             document.getElementById('btn-submit-event').onclick = async () => {
@@ -295,12 +307,20 @@
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e?.id || Date.now().toString()), data);
                 modal.hide();
             };
+
+            if(e) {
+                document.getElementById('btn-del-event').onclick = async () => {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
+                    modal.hide();
+                };
+            }
         }
 
-        // UI Interactions
+        // Login Logic
         document.getElementById('btn-enter').onclick = () => {
             const name = document.getElementById('user-input').value.trim();
             if (!name) return;
+            
             document.getElementById('display-name').innerText = name.split(' ')[0];
             document.getElementById('profile-name').innerText = name;
             
@@ -308,38 +328,48 @@
             document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
             document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
             
-            currentUserData = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
-            if(currentUserData && !isAdmin) {
-                document.getElementById('display-tribe').innerText = currentUserData.tribe || "None";
-                document.getElementById('display-apt').innerText = currentUserData.apt || "None";
+            const matchedMember = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
+            if(matchedMember && !isAdmin) {
+                document.getElementById('display-tribe').innerText = matchedMember.tribe || "None";
+                document.getElementById('display-apt').innerText = matchedMember.apt || "None";
+            } else if (!isAdmin) {
+                document.getElementById('display-tribe').innerText = "Unregistered";
+                document.getElementById('display-apt').innerText = "-";
             }
 
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
         };
 
+        // Navigation and Utility
         document.getElementById('btn-logout').onclick = () => location.reload();
         document.getElementById('btn-close-modal').onclick = () => modal.hide();
         
         document.getElementById('btn-manage-members').onclick = () => {
             const list = allMembers.map(m => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                    <div class="text-sm font-bold">${m.name}</div>
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
+                    <div class="text-sm font-bold text-slate-800">${m.name}</div>
                     <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
                 </div>
             `).join('');
-            modal.show("Members", `<button id="m-add" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-4">+ Add Member</button>${list}`);
+            modal.show("Members", `
+                <button id="m-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4 shadow-lg">+ Add Member</button>
+                <div class="pb-4">${list || '<p class="text-center text-slate-400 py-4">No members yet</p>'}</div>
+            `);
             document.getElementById('m-add').onclick = () => openMemberForm();
         };
 
         document.getElementById('btn-manage-events').onclick = () => {
             const list = allEvents.sort((a,b) => (a.time||'').localeCompare(b.time||'')).map(e => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                    <div class="text-sm font-bold">${e.name}</div>
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
+                    <div class="text-sm font-bold text-slate-800">${e.name}</div>
                     <button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
                 </div>
             `).join('');
-            modal.show("Events", `<button id="e-add" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mb-4">+ Add Event</button>${list}`);
+            modal.show("Events", `
+                <button id="e-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4 shadow-lg">+ Add Event</button>
+                <div class="pb-4">${list || '<p class="text-center text-slate-400 py-4">No events yet</p>'}</div>
+            `);
             document.getElementById('e-add').onclick = () => openEventForm();
         };
 
@@ -352,7 +382,6 @@
             };
         });
 
-        // Initialize App
         init();
     </script>
 </body>
