@@ -16,7 +16,6 @@
         .view-content { display: none; }
         .view-content.active { display: block; }
         #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
-        .admin-widget { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
         .input-pill { width: 100%; background: #f1f5f9; border: 2px solid transparent; border-radius: 1rem; padding: 0.75rem 1rem; outline: none; font-weight: 600; font-size: 14px; color: #1e293b; }
         .input-pill:focus { border-color: #2563eb; background: white; }
         
@@ -27,7 +26,20 @@
         }
 
         .clickable-card { cursor: pointer; transition: transform 0.2s; }
-        .clickable-card:active { transform: scale(0.95); background-color: #f8fafc; }
+        .clickable-card:active { transform: scale(0.95); }
+
+        .toggle-container { background: #f1f5f9; border-radius: 12px; padding: 4px; display: inline-flex; position: relative; }
+        .toggle-btn { padding: 6px 16px; border-radius: 8px; font-size: 11px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: all 0.2s; position: relative; z-index: 1; color: #64748b; text-align: center; }
+        .toggle-btn.active { color: white; }
+        .toggle-slider { position: absolute; top: 4px; left: 4px; height: calc(100% - 8px); background: #2563eb; border-radius: 8px; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 0; }
+        
+        .admin-label { display: block; font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; margin-left: 4px; }
+        
+        .serve-card { background-color: #f0f7ff; border-color: #dbeafe; }
+        .serve-tag { background-color: #dbeafe; color: #1d4ed8; }
+
+        .star-active { color: #f59e0b; }
+        .star-inactive { color: #cbd5e1; }
     </style>
 </head>
 <body>
@@ -35,6 +47,7 @@
     <div id="modal-overlay">
         <div class="glass-card max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-6">
+                <button id="btn-back-modal" class="text-blue-600 font-bold hidden">← Back</button>
                 <h2 id="modal-title" class="text-2xl font-black">Details</h2>
                 <button id="btn-close-modal" class="text-slate-400 font-bold p-2">✕</button>
             </div>
@@ -50,7 +63,7 @@
             <h1 class="text-3xl font-black text-slate-900 tracking-tighter mb-1">Glimpse</h1>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Portal</p>
             <div class="w-full space-y-4">
-                <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center uppercase" placeholder="Enter your full name" />
+                <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center uppercase" placeholder="First Name + Last Initial" />
                 <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">Access Portal</button>
             </div>
         </div>
@@ -61,9 +74,28 @@
         <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
             <!-- Schedule View -->
             <div id="view-schedule" class="view-content active">
-                <header class="mb-10 pt-8 flex justify-between items-start">
+                <header class="mb-8 pt-8">
+                    <div class="flex flex-col sm:flex-row gap-6 mb-6">
+                        <div>
+                            <span class="admin-label">Day selection</span>
+                            <div class="toggle-container w-fit">
+                                <div id="day-slider" class="toggle-slider" style="width: 70px;"></div>
+                                <div onclick="setDay(1)" id="btn-day-1" class="toggle-btn active" style="width: 70px;">Day 1</div>
+                                <div onclick="setDay(2)" id="btn-day-2" class="toggle-btn" style="width: 70px;">Day 2</div>
+                            </div>
+                        </div>
+                        
+                        <div id="serve-toggle-wrapper" class="hidden">
+                            <span class="admin-label">SERVE TEAMS</span>
+                            <div class="toggle-container w-fit">
+                                <div id="serve-slider" class="toggle-slider" style="width: 60px; transform: translateX(60px); background: #64748b;"></div>
+                                <div onclick="toggleServe(true)" id="btn-serve-on" class="toggle-btn" style="width: 60px;">On</div>
+                                <div onclick="toggleServe(false)" id="btn-serve-off" class="toggle-btn active" style="width: 60px;">Off</div>
+                            </div>
+                        </div>
+                    </div>
                     <div>
-                        <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Live Schedule</p>
+                        <p id="schedule-subtitle" class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Live Schedule</p>
                         <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
                     </div>
                 </header>
@@ -77,27 +109,32 @@
                 <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100">
                     <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
+                    <!-- Sub-heading removed per instruction to move role text down -->
                     
-                    <div id="attendee-widgets" class="grid grid-cols-2 gap-3 mt-6">
-                        <div id="tribe-card" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left clickable-card">
-                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Tribe</span>
-                            <span id="display-tribe" class="text-sm font-black text-blue-600">None</span>
-                            <span class="block text-[8px] text-slate-300 mt-1">Tap to view members</span>
+                    <!-- Attendee Widgets -->
+                    <div id="attendee-widgets" class="grid grid-cols-2 gap-3 mt-8">
+                        <div id="tribe-card" class="p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 text-left clickable-card btn-press">
+                            <span class="block text-[9px] font-black text-blue-100 uppercase mb-1">Tribe</span>
+                            <span id="display-tribe" class="text-sm font-black text-white">None</span>
                         </div>
-                        <div id="apt-card" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left clickable-card">
-                            <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Apt</span>
-                            <span id="display-apt" class="text-sm font-black text-blue-600">None</span>
-                            <span class="block text-[8px] text-slate-300 mt-1">Tap to view roommates</span>
+                        <div id="apt-card" class="p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 text-left clickable-card btn-press">
+                            <span class="block text-[9px] font-black text-blue-100 uppercase mb-1">Apt</span>
+                            <span id="display-apt" class="text-sm font-black text-white">None</span>
+                        </div>
+                        <div id="buddy-card" class="col-span-2 p-6 bg-white border-2 border-blue-600 rounded-2xl text-left clickable-card btn-press mt-1">
+                            <!-- Role text moved here and enlarged -->
+                            <span id="profile-role" class="block text-sm font-black text-blue-600 uppercase mb-1">Person of Reference</span>
+                            <span id="display-buddy" class="text-xs font-bold text-slate-400">No notes provided.</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- Staff Control Widget -->
-                <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
-                    <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button id="btn-manage-members" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">👥</span><span class="text-[11px] font-black uppercase">Members</span></button>
-                        <button id="btn-manage-events" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">🗓️</span><span class="text-[11px] font-black uppercase">Events</span></button>
+                    <!-- Admin Control Widget -->
+                    <div id="admin-controls" class="hidden text-left mt-6">
+                        <span class="admin-label mb-3">Staff Management</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="btn-manage-members" class="flex flex-col items-center justify-center p-6 bg-slate-900 rounded-3xl border border-white/5 btn-press transition-all"><span class="text-3xl mb-2">👥</span><span class="text-[11px] font-black text-white uppercase tracking-tighter">Members</span></button>
+                            <button id="btn-manage-events" class="flex flex-col items-center justify-center p-6 bg-slate-900 rounded-3xl border border-white/5 btn-press transition-all"><span class="text-3xl mb-2">🗓️</span><span class="text-[11px] font-black text-white uppercase tracking-tighter">Events</span></button>
+                        </div>
                     </div>
                 </div>
 
@@ -117,7 +154,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDPSo9wjrQsnrYfnN4a-STKJ43Avr5Et8A",
@@ -132,17 +169,27 @@
         const appId = 'glimpse-2026';
         let db, auth, currentUserData = null;
         let allMembers = [], allEvents = [];
+        let activeDay = 1;
+        let showServeEvents = false;
+        let isAdmin = false;
 
         const modal = {
             el: document.getElementById('modal-overlay'),
             title: document.getElementById('modal-title'),
             body: document.getElementById('modal-body'),
             footer: document.getElementById('modal-footer'),
-            show: function(title, bodyHtml, footerHtml = "") {
+            backBtn: document.getElementById('btn-back-modal'),
+            show: function(title, bodyHtml, footerHtml = "", onBack = null) {
                 this.title.innerText = title;
                 this.body.innerHTML = bodyHtml;
                 this.footer.innerHTML = footerHtml;
                 this.el.style.display = 'flex';
+                if(onBack) {
+                    this.backBtn.classList.remove('hidden');
+                    this.backBtn.onclick = onBack;
+                } else {
+                    this.backBtn.classList.add('hidden');
+                }
             },
             hide: function() { this.el.style.display = 'none'; }
         };
@@ -151,33 +198,48 @@
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-
             await signInAnonymously(auth);
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    syncData();
-                }
-            });
+            onAuthStateChanged(auth, (user) => { if (user) syncData(); });
         }
 
         function syncData() {
             const eventsCol = collection(db, 'artifacts', appId, 'public', 'data', 'events');
             const membersCol = collection(db, 'artifacts', appId, 'public', 'data', 'members');
-
             onSnapshot(eventsCol, (snap) => {
                 allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSchedule();
-            });
-
+            }, (err) => console.error(err));
+            
             onSnapshot(membersCol, (snap) => {
                 allMembers = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                // If already logged in, update UI with potentially new data
                 if(currentUserData) {
                     const fresh = allMembers.find(m => m.name.toLowerCase() === currentUserData.name.toLowerCase());
                     if(fresh) updateAttendeeUI(fresh);
                 }
-            });
+                if (modal.el.style.display === 'flex' && modal.title.innerText === "Members") {
+                    document.getElementById('btn-manage-members').click();
+                }
+            }, (err) => console.error(err));
+        }
+
+        window.setDay = (day) => {
+            activeDay = day;
+            const slider = document.getElementById('day-slider');
+            if (day === 1) slider.style.transform = 'translateX(0)';
+            else slider.style.transform = 'translateX(70px)';
+            document.getElementById('btn-day-1').classList.toggle('active', day === 1);
+            document.getElementById('btn-day-2').classList.toggle('active', day === 2);
+            renderSchedule();
+        }
+
+        window.toggleServe = (on) => {
+            showServeEvents = on;
+            const slider = document.getElementById('serve-slider');
+            if (on) { slider.style.transform = 'translateX(0)'; slider.style.background = '#2563eb'; }
+            else { slider.style.transform = 'translateX(60px)'; slider.style.background = '#64748b'; }
+            document.getElementById('btn-serve-on').classList.toggle('active', on);
+            document.getElementById('btn-serve-off').classList.toggle('active', !on);
+            renderSchedule();
         }
 
         function renderSchedule() {
@@ -185,161 +247,188 @@
             const now = new Date();
             const nowStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
             
-            const activeEvents = allEvents.filter(e => !e.endTime || e.endTime >= nowStr);
-            const html = activeEvents
+            const filteredEvents = allEvents.filter(e => {
+                const dayMatch = parseInt(e.day || 1) === activeDay;
+                const isServe = e.category === 'serve';
+                if (!dayMatch) return false;
+                if (isServe && !showServeEvents) return false;
+                return true;
+            });
+
+            const html = filteredEvents
                 .sort((a,b) => (a.time||'').localeCompare(b.time||''))
                 .map(e => {
-                    const isLocked = e.revealTime && nowStr < e.revealTime;
+                    const isLocked = e.revealTime && nowStr < e.revealTime && e.category !== 'serve';
+                    const isServe = e.category === 'serve';
                     return `
-                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm reveal-anim">
+                        <div class="p-6 rounded-3xl border shadow-sm reveal-anim ${isServe ? 'serve-card border-blue-100' : 'bg-white border-slate-100'}">
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${isServe ? 'serve-tag' : 'bg-blue-50 text-blue-600'}">
+                                    ${e.time || 'TBD'} ${isServe ? '• SERVE' : ''}
+                                </span>
                                 ${isLocked ? '<span>🔒</span>' : ''}
                             </div>
                             <h3 class="text-xl font-black text-slate-800 mt-3">${isLocked ? '<span class="text-slate-200 italic">Classified</span>' : e.name}</h3>
-                            <div class="flex items-center gap-1 mt-1">
+                            <div class="flex flex-col mt-2">
                                 <span class="text-xs text-slate-400 font-bold">${isLocked ? '???' : (e.location || 'TBD')}</span>
+                                ${isServe && e.team ? `<span class="text-[10px] text-blue-500 font-black uppercase mt-1">Team: ${e.team}</span>` : ''}
                             </div>
                         </div>
                     `;
                 }).join('');
-            feed.innerHTML = html || '<p class="text-center py-10 text-slate-300">No events found.</p>';
+            feed.innerHTML = html || `<p class="text-center py-10 text-slate-300">No events found.</p>`;
         }
 
         function updateAttendeeUI(member) {
             currentUserData = member;
             document.getElementById('display-tribe').innerText = member.tribe || "Unassigned";
             document.getElementById('display-apt').innerText = member.apt || "Unassigned";
+            document.getElementById('display-buddy').innerText = member.buddyNotes || "No notes provided.";
+            
+            const roleEl = document.getElementById('profile-role');
+            if (isAdmin) {
+                roleEl.innerText = "System Admin Access";
+            } else {
+                roleEl.innerText = member.isStarred ? "Glimpse Buddy" : "Person of Reference";
+            }
+
+            // Interface visibility
+            document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
+            document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
+            document.getElementById('serve-toggle-wrapper').classList.toggle('hidden', !(isAdmin || member.isStarred));
         }
 
-        function showGrouping(type, value) {
-            if(!value || value === "Unassigned") return;
-            const matches = allMembers.filter(m => m[type] === value);
-            const listHtml = matches.map(m => `
-                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-2">
-                    <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs shadow-sm">👤</div>
-                    <div class="text-sm font-bold text-slate-800">${m.name}</div>
-                </div>
-            `).join('');
-            modal.show(`${type === 'tribe' ? 'Tribe' : 'Apt'} members: ${value}`, `
-                <div class="pt-2">${listHtml || '<p class="text-slate-400">Nobody else here yet.</p>'}</div>
-            `);
-        }
-
-        // Logic for Attendee Interactions
-        document.getElementById('tribe-card').onclick = () => {
-            if(currentUserData) showGrouping('tribe', currentUserData.tribe);
-        };
-        document.getElementById('apt-card').onclick = () => {
-            if(currentUserData) showGrouping('apt', currentUserData.apt);
-        };
-
-        // Login Logic
         document.getElementById('btn-enter').onclick = () => {
             const name = document.getElementById('user-input').value.trim();
             if (!name) return;
-            
             document.getElementById('display-name').innerText = name.split(' ')[0];
             document.getElementById('profile-name').innerText = name;
             
-            const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
-            document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
-            document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
+            isAdmin = name.toUpperCase() === 'RDS12ADMIN';
             
             const matched = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
             if(matched) {
                 updateAttendeeUI(matched);
-            } else {
-                currentUserData = { name: name, tribe: 'Unassigned', apt: 'Unassigned' };
-                updateAttendeeUI(currentUserData);
+            } else { 
+                currentUserData = { name: name, tribe: 'Unassigned', apt: 'Unassigned', isStarred: false, buddyNotes: "" }; 
+                updateAttendeeUI(currentUserData); 
             }
-
+            
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
+            renderSchedule();
         };
 
-        // Member Management
+        window.toggleMemberStar = async (id, currentState) => {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', id), {
+                isStarred: !currentState
+            });
+        };
+
         window.editMember = (id) => openMemberForm(allMembers.find(x => x.id === id));
         window.editEvent = (id) => openEventForm(allEvents.find(x => x.id === id));
 
         function openMemberForm(m = null) {
             modal.show(m ? "Edit Member" : "New Member", `
-                <div class="space-y-4">
-                    <input id="f-name" class="input-pill" placeholder="Full Name" value="${m?.name || ''}">
-                    <input id="f-tribe" class="input-pill" placeholder="Tribe Name" value="${m?.tribe || ''}">
-                    <input id="f-apt" class="input-pill" placeholder="Apartment No." value="${m?.apt || ''}">
+                <div class="space-y-4 text-left">
+                    <div><label class="admin-label">Full Name</label><input id="f-name" class="input-pill" placeholder="Identity" value="${m?.name || ''}"></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="admin-label">Tribe</label><input id="f-tribe" class="input-pill" placeholder="Tribe Name" value="${m?.tribe || ''}"></div>
+                        <div><label class="admin-label">Housing</label><input id="f-apt" class="input-pill" placeholder="Apt #" value="${m?.apt || ''}"></div>
+                    </div>
+                    <div>
+                        <label class="admin-label">Glimpse Buddy Notes</label>
+                        <textarea id="f-buddy" class="input-pill h-24 py-3" placeholder="Buddy info or specific notes...">${m?.buddyNotes || ''}</textarea>
+                    </div>
                 </div>
             `, `
                 <button id="btn-submit-member" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save</button>
                 ${m ? `<button id="btn-del-member" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
-            `);
-            
+            `, () => document.getElementById('btn-manage-members').click());
+
             document.getElementById('btn-submit-member').onclick = async () => {
                 const nameInput = document.getElementById('f-name').value.trim();
-                const data = {
-                    name: nameInput,
-                    tribe: document.getElementById('f-tribe').value,
-                    apt: document.getElementById('f-apt').value
+                const data = { 
+                    name: nameInput, 
+                    tribe: document.getElementById('f-tribe').value, 
+                    apt: document.getElementById('f-apt').value,
+                    buddyNotes: document.getElementById('f-buddy').value,
+                    isStarred: m?.isStarred || false
                 };
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m?.id || nameInput.toLowerCase().replace(/\s+/g, '-')), data);
-                modal.hide();
+                document.getElementById('btn-manage-members').click();
             };
-            if(m) document.getElementById('btn-del-member').onclick = async () => {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id));
-                modal.hide();
+            if(m) document.getElementById('btn-del-member').onclick = async () => { 
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id)); 
+                document.getElementById('btn-manage-members').click(); 
             };
         }
 
         function openEventForm(e = null) {
-            modal.show(e ? "Edit Event" : "New Event", `
-                <div class="space-y-4">
-                    <input id="e-name" class="input-pill" placeholder="Event Name" value="${e?.name || ''}">
-                    <input id="e-loc" class="input-pill" placeholder="Location" value="${e?.location || ''}">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input id="e-reveal" type="time" class="input-pill" value="${e?.revealTime || ''}">
-                        <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
+            const renderForm = (cat) => {
+                const isServe = cat === 'serve';
+                return `
+                <div class="space-y-4 text-left">
+                    <div><label class="admin-label">Event Name</label><input id="e-name" class="input-pill" value="${e?.name || ''}"></div>
+                    <div>
+                        <label class="admin-label">Category</label>
+                        <select id="e-category" class="input-pill">
+                            <option value="main" ${cat !== 'serve' ? 'selected' : ''}>Main Schedule</option>
+                            <option value="serve" ${cat === 'serve' ? 'selected' : ''}>Serve/Volunteer</option>
+                        </select>
                     </div>
-                    <input id="e-end" type="time" class="input-pill" placeholder="End Time" value="${e?.endTime || ''}">
-                </div>
-            `, `
+                    <div><label class="admin-label">Location</label><input id="e-loc" class="input-pill" value="${e?.location || ''}"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="admin-label">Event Day</label>
+                            <select id="e-day" class="input-pill">
+                                <option value="1" ${e?.day == 1 ? 'selected' : ''}>Day 1</option>
+                                <option value="2" ${e?.day == 2 ? 'selected' : ''}>Day 2</option>
+                            </select>
+                        </div>
+                        <div><label class="admin-label">Start Time</label><input id="e-time" type="time" class="input-pill" value="${e?.time || ''}"></div>
+                    </div>
+                </div>`;
+            };
+
+            modal.show(e ? "Edit Event" : "New Event", renderForm(e?.category || 'main'), `
                 <button id="btn-submit-event" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save</button>
-                ${e ? `<button id="btn-del-event" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
-            `);
+            `, () => document.getElementById('btn-manage-events').click());
+
             document.getElementById('btn-submit-event').onclick = async () => {
                 const data = {
                     name: document.getElementById('e-name').value,
+                    category: document.getElementById('e-category').value,
                     location: document.getElementById('e-loc').value,
+                    day: document.getElementById('e-day').value,
                     time: document.getElementById('e-time').value,
-                    endTime: document.getElementById('e-end').value,
-                    revealTime: document.getElementById('e-reveal').value
                 };
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e?.id || Date.now().toString()), data);
-                modal.hide();
-            };
-            if(e) document.getElementById('btn-del-event').onclick = async () => {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
-                modal.hide();
+                document.getElementById('btn-manage-events').click();
             };
         }
 
         document.getElementById('btn-manage-members').onclick = () => {
-            const list = allMembers.map(m => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
-                    <div class="text-sm font-bold text-slate-800">${m.name}</div>
-                    <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
-                </div>
-            `).join('');
+            const list = allMembers
+                .sort((a,b) => a.name.localeCompare(b.name))
+                .map(m => `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleMemberStar('${m.id}', ${m.isStarred || false})" class="text-lg transition-all ${m.isStarred ? 'star-active' : 'star-inactive'}">
+                                ${m.isStarred ? '★' : '☆'}
+                            </button>
+                            <div class="text-sm font-bold text-slate-800">${m.name}</div>
+                        </div>
+                        <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
+                    </div>`).join('');
             modal.show("Members", `<button id="m-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Member</button><div class="pb-4">${list}</div>`);
             document.getElementById('m-add').onclick = () => openMemberForm();
         };
 
         document.getElementById('btn-manage-events').onclick = () => {
-            const list = allEvents.map(e => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
-                    <div class="text-sm font-bold text-slate-800">${e.name}</div>
-                    <button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
-                </div>
-            `).join('');
+            const list = allEvents
+                .sort((a,b) => a.day - b.day || (a.time||'').localeCompare(b.time||''))
+                .map(e => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2"><div class="text-sm font-bold text-slate-800">${e.name} (D${e.day||1})</div><button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button></div>`).join('');
             modal.show("Events", `<button id="e-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Event</button><div class="pb-4">${list}</div>`);
             document.getElementById('e-add').onclick = () => openEventForm();
         };
@@ -355,6 +444,15 @@
 
         document.getElementById('btn-close-modal').onclick = () => modal.hide();
         document.getElementById('btn-logout').onclick = () => location.reload();
+        document.getElementById('tribe-card').onclick = () => { if(currentUserData) showGrouping('tribe', currentUserData.tribe); };
+        document.getElementById('apt-card').onclick = () => { if(currentUserData) showGrouping('apt', currentUserData.apt); };
+
+        function showGrouping(type, value) {
+            if(!value || value === "Unassigned") return;
+            const matches = allMembers.filter(m => m[type] === value);
+            const listHtml = matches.map(m => `<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-2"><div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs shadow-sm">👤</div><div class="text-sm font-bold text-slate-800">${m.name}</div></div>`).join('');
+            modal.show(`${type === 'tribe' ? 'Tribe' : 'Apt'}: ${value}`, `<div class="pt-2">${listHtml || '<p class="text-slate-400">Nobody else here yet.</p>'}</div>`);
+        }
 
         init();
     </script>
