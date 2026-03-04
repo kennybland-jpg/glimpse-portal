@@ -3,202 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Glimpse 2026 | Portal</title>
+    <title>Glimpse 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; overflow-x: hidden; }
-        .app-container { max-width: 450px; margin: 0 auto; min-height: 100vh; background: #ffffff; color: #0f172a; position: relative; }
-        .admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; padding: 20px; color: #0f172a; }
-        .admin-modal.active { display: flex; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        input, select { border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px; width: 100%; outline: none; transition: border-color 0.2s; color: #0f172a; }
-        input:focus { border-color: #2563eb; }
-        .shimmer { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shim 2s infinite; }
-        @keyframes shim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #020617; 
+            margin: 0; 
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .glass-card { 
+            background: white;
+            width: 90%;
+            max-width: 380px;
+            border-radius: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            padding: 2.5rem;
+        }
+
+        .btn-press:active { transform: scale(0.96); }
+        
+        #app-view {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #ffffff;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            transition: all 0.2s ease;
+            color: #94a3b8;
+        }
+        
+        .nav-item.active {
+            background-color: #2563eb;
+            color: white;
+            transform: translateY(-4px);
+        }
+
+        .view-content {
+            display: none;
+        }
+        .view-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <!-- LOGIN SCREEN -->
-        <div id="login-screen" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-8 text-white">
-            <div class="w-20 h-20 bg-blue-600 rounded-3xl mb-6 flex items-center justify-center text-3xl shadow-2xl">✨</div>
-            <h1 class="text-4xl font-extrabold tracking-tighter mb-2">Glimpse 2026</h1>
-            <p class="text-slate-400 text-xs uppercase tracking-[0.4em] mb-12">RDS Experience</p>
+    <!-- GATEWAY VIEW -->
+    <div id="gateway-view" class="glass-card">
+        <div class="flex flex-col items-center text-center">
+            <div class="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center shadow-xl text-2xl">✨</div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tighter mb-1">Glimpse</h1>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Preview</p>
             
-            <div id="login-options" class="w-full space-y-4">
-                <button onclick="showLoginForm('attendee')" class="w-full py-5 bg-blue-600 rounded-2xl font-bold text-lg active:scale-95 transition-transform">Attendee Login</button>
-                <button onclick="showLoginForm('staff')" class="w-full py-5 border border-slate-700 rounded-2xl font-bold text-slate-400 active:scale-95 transition-transform">Staff Portal</button>
-            </div>
-
-            <div id="login-form" class="w-full hidden space-y-4">
-                <input id="user-input" type="text" placeholder="Name or Passcode">
-                <button id="btn-submit" onclick="handleLoginSubmit()" class="w-full py-5 bg-white text-slate-900 rounded-2xl font-bold active:scale-95 transition-transform">Enter Portal</button>
-                <button onclick="resetLogin()" class="w-full text-slate-500 text-xs font-bold uppercase py-2">Back</button>
+            <div class="w-full space-y-4">
+                <div class="relative">
+                    <input id="user-input" type="text" 
+                        class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 transition-all text-center" 
+                        placeholder="Enter your name" />
+                </div>
+                <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl transition-all">
+                    Access Portal
+                </button>
+                <p class="text-[10px] text-slate-400 font-medium">By entering, you agree to the event terms.</p>
             </div>
         </div>
+    </div>
 
-        <!-- MAIN APP -->
-        <div id="main-app" class="hidden pb-24">
-            <header class="p-6 pt-12">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p id="user-role-label" class="text-blue-600 font-bold text-[10px] uppercase tracking-widest mb-1">Attendee</p>
-                        <h2 class="text-3xl font-extrabold tracking-tight">Hey, <span id="user-display-name">Guest</span></h2>
+    <!-- MAIN APP VIEW -->
+    <div id="app-view">
+        <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
+            
+            <!-- SCHEDULE VIEW -->
+            <div id="view-schedule" class="view-content active">
+                <header class="mb-10 pt-8">
+                    <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Welcome Back</p>
+                    <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
+                </header>
+                
+                <section>
+                    <h3 class="text-slate-300 font-black text-xs uppercase tracking-widest mb-6">Your Weekend Schedule</h3>
+                    <div id="schedule-feed" class="space-y-4">
+                        <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
+                        <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
                     </div>
-                    <button onclick="location.reload()" class="bg-slate-100 p-3 rounded-full text-slate-400">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </section>
+            </div>
+
+            <!-- PROFILE VIEW -->
+            <div id="view-profile" class="view-content">
+                <header class="mb-10 pt-8">
+                    <h1 class="text-4xl font-black text-slate-900">Your Profile</h1>
+                </header>
+                <div class="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center">
+                    <div class="w-24 h-24 bg-slate-200 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">👤</div>
+                    <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
+                    <p id="profile-role" class="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">Attendee</p>
+                    <div class="mt-8 pt-8 border-t border-slate-200">
+                        <button id="btn-logout" class="text-red-500 font-black text-sm uppercase tracking-widest">Logout Session</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW (Staff Only) -->
+            <div id="view-admin" class="view-content">
+                <header class="mb-10 pt-8">
+                    <h1 class="text-4xl font-black text-slate-900">Admin Panel</h1>
+                </header>
+                <div class="space-y-4">
+                    <div class="bg-slate-900 p-6 rounded-[2rem] text-white">
+                        <h4 class="font-black mb-2">Real-time Controls</h4>
+                        <p class="text-slate-400 text-xs">Manage schedule items and event notifications from this portal.</p>
+                        <button class="mt-4 w-full py-3 bg-blue-600 rounded-xl font-bold text-sm">Push Notification</button>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-200">
+                        <h4 class="font-black text-slate-900 mb-2 text-sm">System Status</h4>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span class="text-xs font-bold text-slate-500 uppercase">Operational</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM NAVIGATION -->
+            <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
+                <div id="nav-container" class="max-w-xs mx-auto bg-slate-900 rounded-full p-2 flex justify-between shadow-2xl">
+                    <button data-view="schedule" class="nav-item active w-14 h-14 flex flex-col items-center justify-center rounded-full">
+                        <span class="text-xl">📅</span>
                     </button>
+                    <button data-view="profile" class="nav-item w-14 h-14 flex flex-col items-center justify-center rounded-full">
+                        <span class="text-xl">👤</span>
+                    </button>
+                    <!-- Admin button slot -->
+                    <div id="admin-nav-slot"></div>
                 </div>
-            </header>
-
-            <main class="px-6">
-                <!-- Schedule View -->
-                <div id="tab-schedule" class="tab-content active">
-                    <h3 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-6">Weekend Timeline</h3>
-                    <div id="schedule-list" class="space-y-4">
-                        <div class="p-8 text-center text-slate-300 font-bold">Connecting to servers...</div>
-                    </div>
-                </div>
-
-                <!-- Profile/Admin View -->
-                <div id="tab-profile" class="tab-content">
-                    <div id="attendee-stats" class="grid grid-cols-2 gap-3 mb-8">
-                        <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Tribe</p>
-                            <p id="stat-tribe" class="font-bold">Not Assigned</p>
-                        </div>
-                        <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Building</p>
-                            <p id="stat-apt" class="font-bold">Not Assigned</p>
-                        </div>
-                    </div>
-
-                    <div id="admin-controls" class="hidden space-y-4">
-                        <h3 class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-4">Admin Console</h3>
-                        <button onclick="toggleModal('event-modal', true)" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2"><span>📅</span> Create Event</button>
-                        <button onclick="toggleModal('member-modal', true)" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2"><span>👥</span> Add Member</button>
-                    </div>
-                </div>
-            </main>
-
-            <!-- NAVIGATION -->
-            <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[240px] bg-slate-900/90 backdrop-blur-xl rounded-full p-2 flex justify-between shadow-2xl z-50">
-                <button id="nav-btn-schedule" onclick="switchTab('schedule')" class="nav-btn bg-white text-slate-900 w-24 py-3 rounded-full font-bold text-sm transition-all">Schedule</button>
-                <button id="nav-btn-profile" onclick="switchTab('profile')" class="nav-btn text-white w-24 py-3 rounded-full font-bold text-sm transition-all">Profile</button>
             </nav>
-        </div>
-    </div>
-
-    <!-- MODAL: EVENTS -->
-    <div id="event-modal" class="admin-modal">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
-            <h3 class="text-2xl font-extrabold mb-6">New Event</h3>
-            <form id="event-form" class="space-y-4">
-                <input id="ev-name" placeholder="Event Name" required>
-                <input id="ev-loc" placeholder="Location" required>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Reveal Time</label>
-                    <input id="ev-reveal" type="datetime-local" required>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-2">Start Time</label>
-                    <input id="ev-start" type="datetime-local" required>
-                </div>
-                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold">Save Event</button>
-                <button type="button" onclick="toggleModal('event-modal', false)" class="w-full py-2 text-slate-400 font-bold text-sm">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: MEMBERS -->
-    <div id="member-modal" class="admin-modal">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8">
-            <h3 class="text-2xl font-extrabold mb-6">New Member</h3>
-            <form id="member-form" class="space-y-4">
-                <input id="mem-name" placeholder="Full Name" required>
-                <input id="mem-tribe" placeholder="Tribe Name" required>
-                <input id="mem-apt" placeholder="Apartment #" required>
-                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold">Register Member</button>
-                <button type="button" onclick="toggleModal('member-modal', false)" class="w-full py-2 text-slate-400 font-bold text-sm">Cancel</button>
-            </form>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Setup
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v3';
+        // Elements
+        const input = document.getElementById('user-input');
+        const btnEnter = document.getElementById('btn-enter');
+        const btnLogout = document.getElementById('btn-logout');
 
-        let userMode = 'attendee';
-        let events = [];
+        const ADMIN_PASS = 'RDS12admin';
 
-        // --- UI FUNCTIONS ---
-        window.showLoginForm = (mode) => {
-            userMode = mode;
-            document.getElementById('login-options').classList.add('hidden');
-            document.getElementById('login-form').classList.remove('hidden');
-            const input = document.getElementById('user-input');
-            input.placeholder = mode === 'staff' ? 'Admin Passcode' : 'Your Name';
-            input.type = mode === 'staff' ? 'password' : 'text';
-            input.focus();
-        };
+        // Nav Handlers
+        function setupNavigation() {
+            const navItems = document.querySelectorAll('.nav-item');
+            const views = document.querySelectorAll('.view-content');
 
-        window.resetLogin = () => {
-            document.getElementById('login-options').classList.remove('hidden');
-            document.getElementById('login-form').classList.add('hidden');
-        };
+            navItems.forEach(btn => {
+                btn.onclick = () => {
+                    const targetView = btn.getAttribute('data-view');
+                    navItems.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    views.forEach(v => {
+                        v.classList.remove('active');
+                        if(v.id === `view-${targetView}`) v.classList.add('active');
+                    });
+                };
+            });
+        }
 
-        window.handleLoginSubmit = () => {
-            const val = document.getElementById('user-input').value.trim();
+        btnEnter.onclick = () => {
+            const val = input.value.trim();
             if(!val) return;
 
-            if(userMode === 'staff' && val !== 'RDS12admin') {
-                alert('Incorrect Admin Passcode');
-                return;
+            const isAdmin = val === ADMIN_PASS;
+            const userName = isAdmin ? 'Admin' : val;
+            
+            // UI Updates
+            document.getElementById('display-name').innerText = userName;
+            document.getElementById('profile-name').innerText = userName;
+            document.getElementById('profile-role').innerText = isAdmin ? 'Event Staff' : 'Attendee';
+
+            if(isAdmin) {
+                document.getElementById('admin-nav-slot').innerHTML = `
+                    <button data-view="admin" class="nav-item w-14 h-14 flex flex-col items-center justify-center rounded-full">
+                        <span class="text-xl">🛠️</span>
+                    </button>
+                `;
             }
 
-            // CRITICAL: Change UI immediately, then load data in background
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            document.getElementById('user-display-name').innerText = userMode === 'staff' ? 'Admin' : val;
-            document.getElementById('user-role-label').innerText = userMode === 'staff' ? 'Staff Portal' : 'Attendee';
-            
-            if(userMode === 'staff') {
-                document.getElementById('admin-controls').classList.remove('hidden');
-            }
+            document.getElementById('gateway-view').style.display = 'none';
+            document.getElementById('app-view').style.display = 'block';
 
-            connectFirebase(val);
+            setupNavigation();
+            initFirebase();
         };
 
-        window.toggleModal = (id, show) => {
-            document.getElementById(id).classList.toggle('active', show);
+        // Support 'Enter' key
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnEnter.click();
+        });
+
+        btnLogout.onclick = () => {
+            location.reload();
         };
 
-        window.switchTab = (tab) => {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`tab-${tab}`).classList.add('active');
-            
-            const btns = document.querySelectorAll('.nav-btn');
-            btns.forEach(b => {
-                b.classList.remove('bg-white', 'text-slate-900');
-                b.classList.add('text-white');
-            });
-            document.getElementById(`nav-btn-${tab}`).classList.add('bg-white', 'text-slate-900');
-        };
-
-        // --- FIREBASE SYNC ---
-        async function connectFirebase(userName) {
+        async function initFirebase() {
             try {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
+
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -206,94 +236,32 @@
                 }
 
                 onAuthStateChanged(auth, (user) => {
-                    if(!user) return;
+                    if (!user) return;
 
-                    // Sync Events
                     onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
-                        events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderEvents();
-                    }, (err) => console.error("Event error", err));
-
-                    // Sync Members
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
-                        const members = snap.docs.map(doc => doc.data());
-                        const profile = members.find(m => m.name.toLowerCase() === userName.toLowerCase());
-                        if(profile) {
-                            document.getElementById('stat-tribe').innerText = profile.tribe;
-                            document.getElementById('stat-apt').innerText = `Apt ${profile.apartment}`;
+                        const events = snap.docs.map(doc => doc.data()).sort((a,b) => (a.time || "").localeCompare(b.time || ""));
+                        const feed = document.getElementById('schedule-feed');
+                        
+                        if (events.length === 0) {
+                            feed.innerHTML = `<p class="text-slate-400 text-center py-10 font-bold">Waiting for schedule updates...</p>`;
+                            return;
                         }
-                    });
+
+                        feed.innerHTML = events.map(e => `
+                            <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black text-blue-600 shadow-sm">${e.time || 'TBD'}</span>
+                                    <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">${e.location || 'RDS'}</span>
+                                </div>
+                                <h4 class="text-lg font-black text-slate-900">${e.name}</h4>
+                            </div>
+                        `).join('');
+                    }, (err) => console.error("Firestore error:", err));
                 });
-            } catch (error) {
-                console.error("Firebase connection failed", error);
-                document.getElementById('schedule-list').innerHTML = `<div class="p-8 text-center text-red-400">Connection Error. Please refresh.</div>`;
+            } catch (err) {
+                console.warn("Firebase config not found or invalid - app will run in offline mode.");
             }
         }
-
-        function renderEvents() {
-            const list = document.getElementById('schedule-list');
-            if(events.length === 0) {
-                list.innerHTML = `<div class="p-8 text-center text-slate-300 font-bold">The schedule is currently empty.</div>`;
-                return;
-            }
-
-            const now = new Date();
-            const sorted = events.sort((a,b) => new Date(a.start) - new Date(b.start));
-
-            list.innerHTML = sorted.map(ev => {
-                const revealTime = new Date(ev.reveal);
-                const isHidden = now < revealTime && userMode !== 'staff';
-                
-                if(isHidden) {
-                    return `
-                        <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 opacity-60">
-                            <div class="h-2 w-16 bg-slate-200 rounded mb-3"></div>
-                            <div class="h-6 w-3/4 shimmer rounded-lg mb-2"></div>
-                            <div class="h-2 w-1/2 shimmer rounded"></div>
-                        </div>
-                    `;
-                }
-
-                const startTime = new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                return `
-                    <div class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
-                        <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">${startTime}</span>
-                        <h4 class="text-lg font-extrabold mt-3">${ev.name}</h4>
-                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-1">${ev.location}</p>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // --- SUBMIT ACTIONS ---
-        document.getElementById('event-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const data = {
-                name: document.getElementById('ev-name').value,
-                location: document.getElementById('ev-loc').value,
-                reveal: document.getElementById('ev-reveal').value,
-                start: document.getElementById('ev-start').value
-            };
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), data);
-                e.target.reset();
-                toggleModal('event-modal', false);
-            } catch (err) { alert("Failed to save event. Check connection."); }
-        };
-
-        document.getElementById('member-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const data = {
-                name: document.getElementById('mem-name').value,
-                tribe: document.getElementById('mem-tribe').value,
-                apartment: document.getElementById('mem-apt').value
-            };
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), data);
-                e.target.reset();
-                toggleModal('member-modal', false);
-            } catch (err) { alert("Failed to save member."); }
-        };
     </script>
 </body>
 </html>
