@@ -25,14 +25,19 @@
 </head>
 <body>
 
-    <!-- Firebase Setup Wizard (Only shows if config is missing/invalid) -->
+    <!-- Improved Firebase Setup Wizard -->
     <div id="setup-overlay">
         <div class="glass-card max-w-full">
             <h2 class="text-2xl font-black mb-2">Connect Firebase</h2>
-            <p class="text-xs text-slate-500 mb-6 font-bold uppercase tracking-tight">Required for GitHub/External Hosting</p>
-            <textarea id="config-input" class="w-full h-40 bg-slate-100 rounded-2xl p-4 font-mono text-[10px] mb-4 outline-none focus:ring-2 ring-blue-500" placeholder='Paste your firebaseConfig object here...'></textarea>
-            <button id="btn-save-config" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">Initialize Database</button>
-            <p class="mt-4 text-[10px] text-center text-slate-400">Get this from Firebase Console > Project Settings > General</p>
+            <p class="text-xs text-slate-500 mb-6 font-bold uppercase tracking-tight">Required for External Hosting</p>
+            <p class="text-[10px] text-slate-400 mb-2 leading-relaxed">Paste the <b>firebaseConfig</b> code block from your project settings:</p>
+            <textarea id="config-input" class="w-full h-48 bg-slate-100 rounded-2xl p-4 font-mono text-[10px] mb-4 outline-none focus:ring-2 ring-blue-500" placeholder='const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "...",
+  ...
+};'></textarea>
+            <button id="btn-save-config" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg btn-press">Initialize Database</button>
+            <button id="btn-clear-cache" class="w-full mt-2 py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Reset Config</button>
         </div>
     </div>
 
@@ -41,7 +46,7 @@
         <div class="flex flex-col items-center text-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center shadow-xl text-2xl text-white">✨</div>
             <h1 class="text-3xl font-black text-slate-900 tracking-tighter mb-1">Glimpse</h1>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Preview</p>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Portal</p>
             <div class="w-full space-y-4">
                 <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center uppercase" placeholder="Enter your name" />
                 <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">Access Portal</button>
@@ -65,21 +70,6 @@
                 <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100">
                     <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
-                    <p id="user-role-label" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">RDS Attendee</p>
-                </div>
-
-                <div id="community-hub" class="bg-slate-50 p-8 rounded-[2.5rem] mb-6 border border-slate-100">
-                    <h3 class="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-6">Discovery</h3>
-                    <div class="space-y-3 text-left">
-                        <button id="card-tribe" class="btn-press w-full bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm text-left">
-                            <span class="text-[10px] font-black text-slate-400 uppercase">My Tribe</span>
-                            <span id="display-tribe" class="font-black text-blue-600">TBD</span>
-                        </button>
-                        <button id="card-apt" class="btn-press w-full bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm text-left">
-                            <span class="text-[10px] font-black text-slate-400 uppercase">Apartment</span>
-                            <span id="display-apt" class="font-black text-slate-900">TBD</span>
-                        </button>
-                    </div>
                 </div>
 
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
@@ -90,7 +80,7 @@
                     </div>
                 </div>
 
-                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase">Logout Session</button>
+                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase">Log Out & Reset</button>
             </div>
 
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
@@ -106,19 +96,13 @@
     <div id="admin-modal" class="full-modal">
         <div class="max-w-md mx-auto p-8">
             <header class="flex items-center justify-between mb-8">
-                <div>
-                    <h2 id="modal-title" class="text-3xl font-black text-slate-900">Manage</h2>
-                    <p id="edit-indicator" class="text-[10px] font-bold text-blue-600 uppercase hidden">Editing Mode</p>
-                </div>
+                <div><h2 id="modal-title" class="text-3xl font-black text-slate-900">Manage</h2></div>
                 <button id="btn-close-modal" class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold">✕</button>
             </header>
             
-            <div id="modal-form" class="bg-slate-50 p-6 rounded-[2rem] mb-8 border border-slate-100">
+            <div id="modal-form" class="bg-slate-50 p-6 rounded-[2rem] mb-8">
                 <div id="form-fields" class="space-y-3"></div>
-                <div class="flex gap-2 mt-6">
-                    <button id="btn-save-item" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">Save Entry</button>
-                    <button id="btn-cancel-edit" class="hidden px-6 py-4 bg-slate-200 text-slate-600 rounded-2xl font-black">Cancel</button>
-                </div>
+                <button id="btn-save-item" class="w-full mt-6 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">Save Entry</button>
             </div>
 
             <h3 class="font-black text-xs uppercase tracking-widest text-slate-400 mb-4">Current List</h3>
@@ -139,23 +123,36 @@
         let db, auth, user;
         let currentMode = 'events';
         let editingId = null;
-        let unsubscribeList = null;
-
-        // LOAD CONFIG
-        let config;
-        try {
-            // Priority: Environment > LocalStorage > Default/Fallback
-            const envConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-            const savedConfig = localStorage.getItem('glimpse_fb_config');
-            config = envConfig || (savedConfig ? JSON.parse(savedConfig) : null);
-        } catch (e) {
-            console.error("Config Parse Error", e);
-        }
 
         function showToast(msg) {
             const t = document.getElementById('loading-toast');
             t.innerText = msg; t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        // --- RELAXED CONFIG PARSER ---
+        function parseFirebaseConfig(raw) {
+            try {
+                // 1. Extract just the object part {}
+                let cleaned = raw.trim();
+                const match = cleaned.match(/\{[\s\S]*\}/);
+                if (!match) throw new Error("No object found");
+                cleaned = match[0];
+
+                // 2. Clean up common JS syntax to make it valid JSON
+                cleaned = cleaned
+                    .replace(/\/\/.*/g, '')               // Remove single line comments
+                    .replace(/\/\*[\s\S]*?\*\//g, '')     // Remove multi-line comments
+                    .replace(/(\w+):/g, '"$1":')          // Quote keys
+                    .replace(/'/g, '"')                   // Swap single quotes for double
+                    .replace(/,(\s*[\]}])/g, '$1')        // Remove trailing commas
+                    .replace(/;\s*$/, '');                // Remove trailing semicolon
+
+                return JSON.parse(cleaned);
+            } catch (e) {
+                console.error("Parse Error:", e);
+                return null;
+            }
         }
 
         async function startFirebase(configData) {
@@ -166,10 +163,7 @@
                 
                 onAuthStateChanged(auth, (u) => { 
                     user = u; 
-                    if (u) {
-                        console.log("Logged in:", u.uid);
-                        loadSchedule(); 
-                    }
+                    if (u) loadSchedule(); 
                 });
 
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -180,129 +174,87 @@
                 
                 document.getElementById('setup-overlay').style.display = 'none';
             } catch (err) {
-                console.error("Firebase Init Error:", err);
-                if (err.message.includes('api-key-not-valid')) {
-                    document.getElementById('setup-overlay').style.display = 'flex';
-                }
+                console.error("Firebase Auth Error:", err);
+                document.getElementById('setup-overlay').style.display = 'flex';
             }
         }
 
-        // Initialize or Prompt
-        if (config && config.apiKey !== 'demo') {
-            startFirebase(config);
+        // Initialize from storage or show prompt
+        const savedConfig = localStorage.getItem('glimpse_fb_config');
+        if (savedConfig) {
+            startFirebase(JSON.parse(savedConfig));
+        } else if (typeof __firebase_config !== 'undefined' && JSON.parse(__firebase_config).apiKey !== 'demo') {
+            startFirebase(JSON.parse(__firebase_config));
         } else {
             document.getElementById('setup-overlay').style.display = 'flex';
         }
 
         document.getElementById('btn-save-config').onclick = () => {
             const raw = document.getElementById('config-input').value;
-            try {
-                // Try to extract JSON from the typical copy-paste string
-                const match = raw.match(/\{[\s\S]*\}/);
-                const finalConfig = match ? JSON.parse(match[0].replace(/(\w+):/g, '"$1":')) : JSON.parse(raw);
-                localStorage.setItem('glimpse_fb_config', JSON.stringify(finalConfig));
+            const parsed = parseFirebaseConfig(raw);
+            if (parsed && parsed.apiKey) {
+                localStorage.setItem('glimpse_fb_config', JSON.stringify(parsed));
                 location.reload();
-            } catch (e) {
-                alert("Invalid configuration format. Please paste the JSON object exactly as shown in Firebase Console.");
+            } else {
+                alert("Invalid format. Please copy the entire config object from Firebase.");
             }
+        };
+
+        document.getElementById('btn-clear-cache').onclick = () => {
+            localStorage.removeItem('glimpse_fb_config');
+            location.reload();
         };
 
         // --- Core Functions ---
         function loadSchedule() {
             if (!db) return;
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'events');
-            onSnapshot(colRef, (snap) => {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
                 const events = snap.docs.map(d => d.data());
-                const feed = document.getElementById('schedule-feed');
-                feed.innerHTML = events.sort((a,b)=> (a.time||"").localeCompare(b.time||"")).map(e => `
+                document.getElementById('schedule-feed').innerHTML = events.sort((a,b)=> (a.time||"").localeCompare(b.time||"")).map(e => `
                     <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
                         <span class="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-wider">${e.time || 'TBD'}</span>
                         <h4 class="text-xl font-black text-slate-900 mt-3 mb-1">${e.name}</h4>
                         <p class="text-sm text-slate-400 font-bold">${e.location || 'Venue'}</p>
                     </div>
-                `).join('') || '<p class="text-center text-slate-400 py-10 font-bold">No events scheduled.</p>';
+                `).join('') || '<p class="text-center text-slate-400 py-10 font-bold">No events yet.</p>';
             });
         }
 
-        const saveEntry = async () => {
-            if (!user) return showToast("Authenticating...");
-            const nameInput = document.getElementById('f-name');
-            const name = nameInput.value.trim();
-            if (!name) return;
-
-            showToast("Saving...");
-            const payload = { name };
-            if (currentMode === 'events') {
-                payload.time = document.getElementById('f-time').value;
-                payload.location = document.getElementById('f-location').value;
-            } else {
-                payload.tribe = document.getElementById('f-tribe').value;
-                payload.apartment = document.getElementById('f-apt').value;
-            }
-
-            try {
-                if (editingId) {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, editingId), payload);
-                } else {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', currentMode), { ...payload, createdAt: Date.now() });
-                }
-                resetForm();
-                showToast("Success!");
-            } catch (error) {
-                console.error(error);
-                showToast("Error: " + error.message);
-            }
-        };
-
-        const resetForm = () => {
-            editingId = null;
-            document.getElementById('edit-indicator').classList.add('hidden');
-            document.getElementById('btn-cancel-edit').classList.add('hidden');
+        document.getElementById('btn-save-item').onclick = async () => {
+            if (!user || !db) return showToast("DB Not Ready");
             const inputs = document.querySelectorAll('#form-fields input');
-            inputs.forEach(i => i.value = '');
-        };
-
-        window.editAdminItem = (id, dataStr) => {
-            const data = JSON.parse(decodeURIComponent(dataStr));
-            editingId = id;
-            document.getElementById('edit-indicator').classList.remove('hidden');
-            document.getElementById('btn-cancel-edit').classList.remove('hidden');
-            document.getElementById('f-name').value = data.name || '';
-            if (currentMode === 'events') {
-                document.getElementById('f-time').value = data.time || '';
-                document.getElementById('f-location').value = data.location || '';
-            } else {
-                document.getElementById('f-tribe').value = data.tribe || '';
-                document.getElementById('f-apt').value = data.apartment || '';
-            }
+            const data = {};
+            inputs.forEach(i => data[i.id.replace('f-','')] = i.value);
+            
+            try {
+                showToast("Saving...");
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', currentMode), { ...data, createdAt: Date.now() });
+                inputs.forEach(i => i.value = '');
+                showToast("Success!");
+            } catch (e) { showToast("Error: " + e.message); }
         };
 
         window.deleteAdminItem = async (id) => {
-            if (!confirm("Delete?")) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
+            if (confirm("Delete this?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
         };
 
-        const renderAdminList = () => {
-            if (unsubscribeList) unsubscribeList();
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', currentMode);
-            unsubscribeList = onSnapshot(colRef, (snap) => {
-                const listEl = document.getElementById('modal-list');
-                const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                listEl.innerHTML = items.map(item => {
-                    const dataAttr = encodeURIComponent(JSON.stringify(item));
-                    return `
-                        <div class="bg-slate-50 p-4 rounded-2xl flex items-center justify-between">
-                            <div><p class="font-black text-sm">${item.name}</p></div>
-                            <div class="flex gap-2">
-                                <button onclick="window.editAdminItem('${item.id}', '${dataAttr}')" class="text-blue-600 font-bold text-[10px]">EDIT</button>
-                                <button onclick="window.deleteAdminItem('${item.id}')" class="text-red-400 font-bold text-[10px]">DEL</button>
-                            </div>
-                        </div>`;
-                }).join('');
+        function openAdminModal(mode) {
+            currentMode = mode;
+            document.getElementById('modal-title').innerText = mode === 'events' ? 'Manage Events' : 'Manage Members';
+            document.getElementById('form-fields').innerHTML = mode === 'events' 
+                ? `<input id="f-name" class="input-field" placeholder="Event Name"><input id="f-time" class="input-field" placeholder="Time (e.g. 14:00)"><input id="f-location" class="input-field" placeholder="Location">`
+                : `<input id="f-name" class="input-field" placeholder="Full Name"><input id="f-tribe" class="input-field" placeholder="Tribe Name"><input id="f-apt" class="input-field" placeholder="Apartment #">`;
+            document.getElementById('admin-modal').style.display = 'block';
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', currentMode), (snap) => {
+                document.getElementById('modal-list').innerHTML = snap.docs.map(d => `
+                    <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center">
+                        <span class="font-bold text-slate-800 text-sm">${d.data().name}</span>
+                        <button onclick="window.deleteAdminItem('${d.id}')" class="text-red-400 font-bold text-[10px] uppercase">Remove</button>
+                    </div>
+                `).join('');
             });
-        };
+        }
 
-        // --- Event UI Listeners ---
         document.getElementById('btn-enter').onclick = () => {
             const val = document.getElementById('user-input').value.trim();
             if (!val) return;
@@ -314,29 +266,14 @@
             document.getElementById('app-view').style.display = 'block';
         };
 
-        document.getElementById('btn-save-item').onclick = saveEntry;
         document.getElementById('btn-manage-events').onclick = () => openAdminModal('events');
         document.getElementById('btn-manage-members').onclick = () => openAdminModal('members');
         document.getElementById('btn-close-modal').onclick = () => document.getElementById('admin-modal').style.display = 'none';
-
-        function openAdminModal(mode) {
-            currentMode = mode;
-            document.getElementById('modal-title').innerText = mode === 'events' ? 'Events' : 'Members';
-            const fields = document.getElementById('form-fields');
-            fields.innerHTML = mode === 'events' 
-                ? `<input id="f-name" class="input-field" placeholder="Name"><input id="f-time" class="input-field" placeholder="Time"><input id="f-location" class="input-field" placeholder="Location">`
-                : `<input id="f-name" class="input-field" placeholder="Name"><input id="f-tribe" class="input-field" placeholder="Tribe"><input id="f-apt" class="input-field" placeholder="Apartment">`;
-            document.getElementById('admin-modal').style.display = 'block';
-            renderAdminList();
-        }
-
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.onclick = () => {
-                const view = btn.getAttribute('data-view');
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                btn.classList.add('active');
-                document.querySelectorAll('.view-content').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
-            };
+        document.querySelectorAll('.nav-item').forEach(btn => btn.onclick = () => {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            btn.classList.add('active');
+            const view = btn.getAttribute('data-view');
+            document.querySelectorAll('.view-content').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
         });
         document.getElementById('btn-logout').onclick = () => { localStorage.removeItem('glimpse_fb_config'); location.reload(); };
     </script>
