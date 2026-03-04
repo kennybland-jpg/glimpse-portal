@@ -7,166 +7,174 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: #0f172a; }
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: #0f172a; margin: 0; padding: 0; }
+        
         .hidden-view { display: none !important; }
-        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
         
-        @keyframes slideUp { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
+        /* Glassmorphism */
+        .glass-card { 
+            background: rgba(255, 255, 255, 1); 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        .event-card { animation: slideUp 0.3s ease-out forwards; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
+        .animate-fade { animation: fadeIn 0.3s ease-out; }
+        .animate-scale { animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* Custom Scroll */
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
 
-        .tab-content { transition: opacity 0.2s ease-in-out; }
-        .member-item { animation: slideUp 0.2s ease-out forwards; }
+        .tab-btn.active { background-color: #eff6ff; color: #2563eb; }
+        
+        /* Pulse for interactivity */
+        .btn-pulse:active { transform: scale(0.97); }
     </style>
 </head>
-<body class="min-h-screen text-slate-900">
+<body class="text-slate-900">
 
     <!-- LANDING VIEW -->
-    <div id="landing-view" class="fixed inset-0 flex items-center justify-center p-6 z-40 bg-slate-900">
-        <div class="w-full max-w-sm glass-card rounded-[2.5rem] shadow-2xl p-10 text-center">
-            <div class="w-20 h-20 bg-blue-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-lg text-4xl">✨</div>
-            <h1 class="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimpse 2026</h1>
-            <p class="text-slate-500 mb-10 font-medium italic">RDS Preview Weekend</p>
+    <div id="landing-view" class="fixed inset-0 flex items-center justify-center p-6 z-[100] bg-slate-950">
+        <div class="w-full max-w-sm glass-card rounded-[3rem] shadow-2xl p-10 text-center animate-scale">
+            <div class="w-24 h-24 bg-blue-600 rounded-[2.5rem] mx-auto mb-8 flex items-center justify-center shadow-2xl text-5xl">✨</div>
+            <h1 class="text-4xl font-black text-slate-900 mb-2 tracking-tighter">Glimpse 2026</h1>
+            <p class="text-slate-400 mb-12 font-semibold italic text-sm">RDS Preview Weekend</p>
+            
             <div class="space-y-4">
-                <button id="btn-attendee-login" class="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-95">Attendee Login</button>
-                <button id="btn-admin-login" class="w-full py-5 border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95">Staff Portal</button>
+                <button id="btn-attendee-init" class="btn-pulse w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black text-lg shadow-xl shadow-blue-900/20 hover:bg-blue-700 transition-all">
+                    Attendee Login
+                </button>
+                <button id="btn-admin-init" class="btn-pulse w-full py-5 border-2 border-slate-100 text-slate-500 rounded-[1.5rem] font-bold hover:bg-slate-50 transition-all">
+                    Staff Portal
+                </button>
             </div>
         </div>
     </div>
 
     <!-- LOGIN MODAL -->
-    <div id="login-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden-view">
-        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
-                <h3 id="modal-title" class="font-black text-slate-800 text-lg">Login</h3>
-                <button id="btn-close-modal" class="p-2 bg-slate-50 rounded-full text-slate-400">✕</button>
+    <div id="login-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 hidden-view">
+        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-scale relative">
+            <button id="btn-close-modal" class="absolute top-6 right-6 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            
+            <div class="mb-8">
+                <h3 id="modal-title" class="font-black text-2xl text-slate-900 tracking-tight">Login</h3>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Authorized Access Only</p>
             </div>
+
             <div class="space-y-6">
                 <div>
-                    <label id="input-label" class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Your Name</label>
-                    <input id="login-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none transition-all font-medium" />
-                    <p id="error-msg" class="text-red-500 text-xs font-bold mt-2 ml-1 hidden-view">Incorrect Password</p>
+                    <label id="input-label" class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Your Full Name</label>
+                    <input id="login-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-semibold text-slate-800" placeholder="Type here..." />
+                    <p id="error-msg" class="text-red-500 text-[10px] font-black mt-3 ml-1 hidden-view uppercase tracking-tighter">Invalid access credentials</p>
                 </div>
-                <button id="btn-submit-login" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl">Continue</button>
+                <button id="btn-submit-login" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-2xl shadow-slate-900/30 active:scale-95 transition-all">
+                    Enter Portal
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- MAIN APP VIEW -->
-    <div id="app-view" class="min-h-screen bg-white max-w-md mx-auto shadow-2xl relative flex flex-col hidden-view">
-        <header class="bg-white px-8 pt-14 pb-4 sticky top-0 z-10">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-[11px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Portal</h1>
-                    <p class="text-3xl font-black text-slate-900 tracking-tight">Hi, <span id="user-display-name">Guest</span></p>
+    <!-- APP VIEW -->
+    <div id="app-view" class="min-h-screen bg-slate-50 hidden-view flex flex-col items-center">
+        <div class="w-full max-w-md bg-white min-h-screen shadow-2xl flex flex-col relative">
+            
+            <header class="px-8 pt-16 pb-6 bg-white sticky top-0 z-20">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p id="current-date-header" class="text-[10px] font-black text-blue-600 tracking-[0.2em] uppercase mb-1">Glimpse 2026 // Live</p>
+                        <h1 class="text-3xl font-black text-slate-900">Hey, <span id="user-display-name">Guest</span></h1>
+                    </div>
+                    <div class="text-right">
+                        <p id="clock" class="text-xs font-bold text-slate-400 tabular-nums">00:00:00</p>
+                        <button onclick="window.location.reload()" class="text-[9px] font-black text-red-400 uppercase tracking-widest mt-1">Log Out</button>
+                    </div>
                 </div>
-                <div class="text-right">
-                    <p id="current-time-display" class="text-[10px] font-bold text-slate-400 tabular-nums">00:00:00</p>
-                    <button onclick="location.reload()" class="mt-1 text-slate-300 hover:text-red-500 transition-colors text-[10px] font-bold uppercase tracking-wider">Logout</button>
-                </div>
-            </div>
-        </header>
+            </header>
 
-        <main id="main-content" class="flex-1 px-6 pb-32 overflow-y-auto custom-scroll">
-            <!-- VIEW: SCHEDULE -->
-            <div id="view-schedule" class="tab-content space-y-4">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-black text-slate-800">Your Weekend</h2>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Updates</span>
+            <main id="main-scroll" class="flex-1 px-6 pb-32 overflow-y-auto custom-scroll">
+                <!-- Schedule Tab -->
+                <div id="tab-schedule" class="tab-content py-4 space-y-4">
+                    <h2 class="text-sm font-black text-slate-400 uppercase tracking-widest px-1">Timeline</h2>
+                    <div id="schedule-list" class="space-y-4">
+                        <div class="p-8 text-center text-slate-300 font-bold italic">Gathering data...</div>
+                    </div>
                 </div>
-                <div id="events-list" class="space-y-4">
-                    <div class="text-center py-10 text-slate-400 font-medium">Loading schedule...</div>
-                </div>
-            </div>
 
-            <!-- VIEW: INFO -->
-            <div id="view-info" class="tab-content hidden-view space-y-4 pt-4">
-                <h2 class="text-xl font-black text-slate-800">My Assignment</h2>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="btn-show-tribe" class="bg-blue-600 text-left p-6 rounded-[2rem] shadow-lg shadow-blue-200 active:scale-95 transition-all group">
-                        <p class="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">My Tribe</p>
-                        <p id="info-tribe" class="text-xl font-black text-white">—</p>
-                        <div class="mt-4 flex items-center text-[10px] font-bold text-blue-100 uppercase">
-                            <span>View All</span>
-                            <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                <!-- Info Tab -->
+                <div id="tab-info" class="tab-content py-4 hidden-view space-y-6">
+                    <h2 class="text-sm font-black text-slate-400 uppercase tracking-widest px-1">My Status</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div id="tribe-card" class="bg-blue-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-blue-200">
+                            <p class="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Tribe</p>
+                            <h3 id="info-tribe" class="text-2xl font-black">—</h3>
                         </div>
-                    </button>
-
-                    <button id="btn-show-apartment" class="bg-slate-900 text-left p-6 rounded-[2rem] shadow-lg shadow-slate-200 active:scale-95 transition-all group">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Apartment</p>
-                        <p id="info-apartment" class="text-xl font-black text-white">—</p>
-                        <div class="mt-4 flex items-center text-[10px] font-bold text-slate-400 uppercase">
-                            <span>View Mates</span>
-                            <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                        <div id="apt-card" class="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl shadow-slate-200">
+                            <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Apt</p>
+                            <h3 id="info-apt" class="text-2xl font-black">—</h3>
                         </div>
-                    </button>
+                    </div>
+                    <div id="mates-container" class="space-y-3">
+                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Team Mates</h3>
+                        <div id="mates-list" class="space-y-2"></div>
+                    </div>
                 </div>
 
-                <div id="info-list-container" class="mt-6 space-y-4 hidden-view">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <h3 id="list-title" class="text-xs font-black text-slate-400 uppercase tracking-widest">Members</h3>
-                        <button id="btn-clear-info-list" class="text-[10px] font-bold text-blue-600 uppercase font-black">Clear</button>
+                <!-- Admin Tab -->
+                <div id="tab-admin" class="tab-content py-4 hidden-view space-y-8">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-black text-slate-900">Events</h2>
+                            <button onclick="window.openEditor('event')" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl">ADD NEW</button>
+                        </div>
+                        <div id="admin-events" class="space-y-2"></div>
                     </div>
-                    <div id="info-list-results" class="space-y-2"></div>
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-black text-slate-900">Members</h2>
+                            <button onclick="window.openEditor('member')" class="bg-slate-900 text-white text-[10px] font-black px-4 py-2 rounded-xl">ADD NEW</button>
+                        </div>
+                        <div id="admin-members" class="space-y-2"></div>
+                    </div>
                 </div>
-            </div>
+            </main>
 
-            <!-- VIEW: ADMIN -->
-            <div id="view-admin" class="tab-content hidden-view space-y-8">
-                <section>
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-black text-slate-800">Events</h2>
-                        <button id="btn-admin-add-event" class="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg">+ Add</button>
-                    </div>
-                    <div id="admin-events-list" class="space-y-2"></div>
-                </section>
-                <section>
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-black text-slate-800">Members</h2>
-                        <button id="btn-admin-add-member" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg">+ Add</button>
-                    </div>
-                    <div id="admin-members-list" class="space-y-2"></div>
-                </section>
-            </div>
-        </main>
-
-        <!-- NAV -->
-        <nav id="bottom-nav" class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[360px] bg-white/90 backdrop-blur-xl border border-slate-100 shadow-2xl rounded-[2.5rem] p-2 flex justify-around items-center z-20">
-            <button id="nav-schedule" class="p-4 rounded-[2rem] flex-1 flex flex-col items-center bg-blue-50 text-blue-600">
-                <span class="text-lg">📅</span>
-                <span class="text-[9px] font-bold uppercase mt-1">Schedule</span>
-            </button>
-            <button id="nav-info" class="p-4 rounded-[2rem] flex-1 flex flex-col items-center text-slate-400">
-                <span class="text-lg">👤</span>
-                <span class="text-[9px] font-bold uppercase mt-1">My Info</span>
-            </button>
-            <button id="nav-admin" class="p-4 rounded-[2rem] flex-1 flex flex-col items-center text-slate-400 hidden-view">
-                <span class="text-lg">🛠️</span>
-                <span class="text-[9px] font-bold uppercase mt-1">Admin</span>
-            </button>
-        </nav>
+            <!-- NAV -->
+            <nav class="fixed bottom-10 left-1/2 -translate-x-1/2 w-[85%] max-w-[320px] bg-white/80 backdrop-blur-2xl border border-white/50 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] p-2 flex justify-between z-30">
+                <button id="nav-btn-schedule" class="tab-btn active flex-1 py-4 rounded-[2rem] flex flex-col items-center transition-all">
+                    <span class="text-xl">📅</span>
+                    <span class="text-[8px] font-black uppercase mt-1 tracking-tighter">Plan</span>
+                </button>
+                <button id="nav-btn-info" class="tab-btn flex-1 py-4 rounded-[2rem] flex flex-col items-center transition-all text-slate-400">
+                    <span class="text-xl">👤</span>
+                    <span class="text-[8px] font-black uppercase mt-1 tracking-tighter">Me</span>
+                </button>
+                <button id="nav-btn-admin" class="tab-btn flex-1 py-4 rounded-[2rem] flex flex-col items-center transition-all text-slate-400 hidden-view">
+                    <span class="text-xl">⚙️</span>
+                    <span class="text-[8px] font-black uppercase mt-1 tracking-tighter">Core</span>
+                </button>
+            </nav>
+        </div>
     </div>
 
-    <!-- MODAL EDITOR -->
-    <div id="editor-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end justify-center hidden-view">
-        <div class="bg-white w-full max-w-md rounded-t-[3rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+    <!-- UNIVERSAL EDITOR -->
+    <div id="editor-overlay" class="fixed inset-0 bg-slate-950/90 z-[200] hidden-view flex items-end">
+        <div class="bg-white w-full rounded-t-[3rem] p-10 animate-scale pb-16">
             <div class="flex justify-between items-center mb-8">
-                <h3 id="editor-title" class="font-black text-2xl text-slate-900">Edit Details</h3>
-                <button id="btn-close-editor" class="p-3 bg-slate-100 rounded-full text-slate-500">✕</button>
+                <h3 id="editor-title" class="text-2xl font-black text-slate-900">Edit Entry</h3>
+                <button id="btn-close-editor" class="text-slate-300 hover:text-slate-900 font-bold">CANCEL</button>
             </div>
             <form id="editor-form" class="space-y-5">
-                <input type="hidden" id="edit-id">
-                <div id="form-fields" class="space-y-5"></div>
+                <div id="editor-fields" class="space-y-4"></div>
                 <div class="pt-6 space-y-3">
-                    <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl">Save</button>
-                    <button type="button" id="btn-delete-entry" class="w-full py-4 text-red-500 font-bold hover:bg-red-50 rounded-2xl">Delete</button>
+                    <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-2xl font-black">SAVE CHANGES</button>
+                    <button type="button" id="btn-delete" class="w-full py-2 text-red-500 font-bold text-xs">DELETE PERMANENTLY</button>
                 </div>
             </form>
         </div>
@@ -174,7 +182,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = JSON.parse(__firebase_config);
@@ -183,220 +191,206 @@
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
 
-        let user = null;
+        let events = [];
+        let members = [];
+        let currentUser = null;
         let isAdmin = false;
-        let userName = '';
-        let allEvents = [];
-        let allMembers = [];
-        let currentType = '';
 
-        // UI HELPERS
-        const toggle = (id, show) => document.getElementById(id).classList.toggle('hidden-view', !show);
+        const ui = {
+            view: (id, show) => document.getElementById(id).classList.toggle('hidden-view', !show),
+            set: (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; }
+        };
 
-        // LOGIN FLOW
-        document.getElementById('btn-attendee-login').onclick = () => openLogin('attendee');
-        document.getElementById('btn-admin-login').onclick = () => openLogin('admin');
-        document.getElementById('btn-close-modal').onclick = () => toggle('login-modal', false);
-
-        function openLogin(mode) {
+        // --- LOGIN LOGIC ---
+        const openLogin = (mode) => {
             const modal = document.getElementById('login-modal');
             modal.dataset.mode = mode;
-            document.getElementById('modal-title').innerText = mode === 'admin' ? 'Staff Portal' : 'Welcome';
+            ui.set('modal-title', mode === 'admin' ? 'Staff Login' : 'Sign In');
             document.getElementById('login-input').type = mode === 'admin' ? 'password' : 'text';
-            document.getElementById('login-input').placeholder = mode === 'admin' ? '••••••••' : 'Your Name';
-            toggle('login-modal', true);
-        }
+            document.getElementById('login-input').value = '';
+            ui.view('login-modal', true);
+            document.getElementById('login-input').focus();
+        };
+
+        // Bind Landing Buttons
+        document.getElementById('btn-attendee-init').addEventListener('click', () => openLogin('attendee'));
+        document.getElementById('btn-admin-init').addEventListener('click', () => openLogin('admin'));
+        document.getElementById('btn-close-modal').addEventListener('click', () => ui.view('login-modal', false));
 
         document.getElementById('btn-submit-login').onclick = async () => {
             const mode = document.getElementById('login-modal').dataset.mode;
-            const val = document.getElementById('login-input').value.trim();
-            if (!val) return;
+            const input = document.getElementById('login-input').value.trim();
+            if(!input) return;
 
-            if (mode === 'admin' && val !== 'RDS12admin') {
-                document.getElementById('error-msg').classList.remove('hidden-view');
-                return;
-            }
-
-            isAdmin = (mode === 'admin');
-            userName = val;
-
-            if (!auth.currentUser) {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+            if(mode === 'admin') {
+                if(input === 'RDS12admin') {
+                    isAdmin = true;
+                    enterApp('Staff');
                 } else {
-                    await signInAnonymously(auth);
+                    ui.view('error-msg', true);
                 }
+            } else {
+                enterApp(input);
             }
+        };
 
-            document.getElementById('user-display-name').innerText = isAdmin ? 'Staff' : userName;
-            toggle('landing-view', false);
-            toggle('login-modal', false);
-            toggle('app-view', true);
+        async function enterApp(name) {
+            currentUser = name;
+            ui.set('user-display-name', name);
             
-            if (isAdmin) {
-                toggle('nav-admin', true);
-                toggle('nav-info', false);
+            // Firebase Auth Check
+            if(!auth.currentUser) await signInAnonymously(auth);
+            
+            ui.view('landing-view', false);
+            ui.view('login-modal', false);
+            ui.view('app-view', true);
+            
+            if(isAdmin) {
+                ui.view('nav-btn-admin', true);
                 switchTab('admin');
             } else {
-                updateUserInfo();
+                switchTab('schedule');
             }
-        };
+        }
 
-        // NAVIGATION
+        // --- NAVIGATION ---
         function switchTab(tab) {
-            ['schedule', 'info', 'admin'].forEach(t => {
-                toggle(`view-${t}`, t === tab);
-                const btn = document.getElementById(`nav-${t}`);
-                if (btn) {
-                    btn.classList.toggle('bg-blue-50', t === tab);
-                    btn.classList.toggle('text-blue-600', t === tab);
-                    btn.classList.toggle('text-slate-400', t !== tab);
-                }
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden-view'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active', 'text-blue-600', 'bg-blue-50');
+                b.classList.add('text-slate-400');
             });
-            if (tab === 'info') toggle('info-list-container', false);
+
+            ui.view(`tab-${tab}`, true);
+            const btn = document.getElementById(`nav-btn-${tab}`);
+            btn.classList.add('active', 'text-blue-600', 'bg-blue-50');
+            btn.classList.remove('text-slate-400');
+            
+            if(tab === 'info') renderInfo();
         }
 
-        document.getElementById('nav-schedule').onclick = () => switchTab('schedule');
-        document.getElementById('nav-info').onclick = () => switchTab('info');
-        document.getElementById('nav-admin').onclick = () => switchTab('admin');
+        document.getElementById('nav-btn-schedule').onclick = () => switchTab('schedule');
+        document.getElementById('nav-btn-info').onclick = () => switchTab('info');
+        document.getElementById('nav-btn-admin').onclick = () => switchTab('admin');
 
-        // INFO TAB LOGIC
-        function updateUserInfo() {
-            const member = allMembers.find(m => m.name.toLowerCase() === userName.toLowerCase());
-            document.getElementById('info-tribe').innerText = member?.tribe || '—';
-            document.getElementById('info-apartment').innerText = member?.apartment || '—';
-        }
-
-        document.getElementById('btn-show-tribe').onclick = () => {
-            const member = allMembers.find(m => m.name.toLowerCase() === userName.toLowerCase());
-            if (!member?.tribe) return;
-            document.getElementById('list-title').innerText = `${member.tribe} Tribe Members`;
-            renderFilteredList(allMembers.filter(m => m.tribe === member.tribe));
-        };
-
-        document.getElementById('btn-show-apartment').onclick = () => {
-            const member = allMembers.find(m => m.name.toLowerCase() === userName.toLowerCase());
-            if (!member?.apartment) return;
-            document.getElementById('list-title').innerText = `Apartment ${member.apartment} Mates`;
-            renderFilteredList(allMembers.filter(m => m.apartment === member.apartment));
-        };
-
-        function renderFilteredList(list) {
-            toggle('info-list-container', true);
-            document.getElementById('info-list-results').innerHTML = list.map(m => `
-                <div class="member-item flex justify-between p-4 bg-slate-50 rounded-2xl">
-                    <span class="font-bold text-slate-800">${m.name}</span>
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${m.tribe}</span>
-                </div>
-            `).join('');
-            document.getElementById('info-list-container').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        document.getElementById('btn-clear-info-list').onclick = () => toggle('info-list-container', false);
-
-        // SYNC DATA
-        onAuthStateChanged(auth, (u) => {
-            if (!u) return;
+        // --- DATA SYNC ---
+        onAuthStateChanged(auth, (user) => {
+            if(!user) return;
+            
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), s => {
-                allEvents = s.docs.map(d => ({id: d.id, ...d.data()}));
-                renderEvents();
-                if (isAdmin) renderAdminEvents();
-            }, e => console.error(e));
+                events = s.docs.map(d => ({id: d.id, ...d.data()}));
+                renderSchedule();
+                if(isAdmin) renderAdminEvents();
+            }, (err) => console.log(err));
 
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), s => {
-                allMembers = s.docs.map(d => ({id: d.id, ...d.data()}));
-                if (!isAdmin) updateUserInfo();
-                if (isAdmin) renderAdminMembers();
-            }, e => console.error(e));
+                members = s.docs.map(d => ({id: d.id, ...d.data()}));
+                if(isAdmin) renderAdminMembers();
+            }, (err) => console.log(err));
         });
 
-        // RENDERERS
-        function renderEvents() {
-            const list = document.getElementById('events-list');
-            if (allEvents.length === 0) {
-                list.innerHTML = '<div class="text-center py-10 text-slate-400">Schedule is empty.</div>';
-                return;
-            }
-            list.innerHTML = allEvents.map(e => `
-                <div class="event-card bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-full">${e.time}</span>
-                        <span class="text-[10px] font-bold text-slate-400">📍 ${e.location}</span>
+        function renderSchedule() {
+            const list = document.getElementById('schedule-list');
+            list.innerHTML = events.length ? events.map(e => `
+                <div class="bg-white border border-slate-100 p-6 rounded-[2.5rem] shadow-sm animate-scale">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-1 rounded-full uppercase tracking-widest">${e.time}</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase">📍 ${e.location}</span>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800">${e.name}</h3>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight">${e.name}</h3>
                 </div>
-            `).join('');
+            `).join('') : '<div class="p-12 text-center text-slate-300 font-bold">No events scheduled.</div>';
         }
 
-        // ADMIN RENDERERS
+        function renderInfo() {
+            const me = members.find(m => m.name.toLowerCase() === currentUser.toLowerCase());
+            ui.set('info-tribe', me?.tribe || '—');
+            ui.set('info-apt', me?.apartment || '—');
+            
+            if(me) {
+                const team = members.filter(m => m.tribe === me.tribe && m.name !== me.name);
+                document.getElementById('mates-list').innerHTML = team.map(t => `
+                    <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                        <span class="font-bold text-slate-800">${t.name}</span>
+                        <span class="text-[9px] font-black text-slate-400 uppercase">Apt ${t.apartment}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- ADMIN EDITOR ---
+        let currentEditingId = null;
+        let currentEditingType = null;
+
+        window.openEditor = (type, id = null) => {
+            currentEditingId = id;
+            currentEditingType = type;
+            const data = id ? (type === 'event' ? events : members).find(i => i.id === id) : null;
+            
+            ui.set('editor-title', id ? 'Update Entry' : `New ${type}`);
+            const fields = type === 'event' ? 
+                [['name','Event Name'],['time','Start Time'],['location','Location']] :
+                [['name','Full Name'],['tribe','Tribe'],['apartment','Apartment #']];
+                
+            document.getElementById('editor-fields').innerHTML = fields.map(([k, l]) => `
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block ml-1">${l}</label>
+                    <input id="edit-${k}" value="${data?.[k] || ''}" class="w-full bg-slate-50 rounded-2xl p-4 outline-none border-2 border-transparent focus:border-blue-500 font-bold" />
+                </div>
+            `).join('');
+            
+            ui.view('btn-delete', !!id);
+            ui.view('editor-overlay', true);
+        };
+
+        document.getElementById('editor-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const colName = currentEditingType === 'event' ? 'events' : 'members';
+            const payload = {};
+            document.querySelectorAll('#editor-fields input').forEach(inp => {
+                payload[inp.id.replace('edit-', '')] = inp.value;
+            });
+
+            if(currentEditingId) {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', colName, currentEditingId), payload);
+            } else {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', colName), payload);
+            }
+            ui.view('editor-overlay', false);
+        };
+
+        document.getElementById('btn-delete').onclick = async () => {
+            if(!confirm('Delete this entry?')) return;
+            const colName = currentEditingType === 'event' ? 'events' : 'members';
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', colName, currentEditingId));
+            ui.view('editor-overlay', false);
+        };
+
+        document.getElementById('btn-close-editor').onclick = () => ui.view('editor-overlay', false);
+
         function renderAdminEvents() {
-            document.getElementById('admin-events-list').innerHTML = allEvents.map(e => `
-                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
-                    <span class="font-bold text-sm text-slate-700">${e.name}</span>
-                    <button class="px-3 py-1 bg-white border rounded-lg text-xs font-bold text-blue-600" onclick="window.editEntry('event', '${e.id}')">Edit</button>
+            document.getElementById('admin-events').innerHTML = events.map(e => `
+                <div class="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
+                    <span class="font-bold text-slate-700">${e.name}</span>
+                    <button onclick="window.openEditor('event', '${e.id}')" class="text-blue-600 font-black text-[10px] uppercase">Edit</button>
                 </div>
             `).join('');
         }
 
         function renderAdminMembers() {
-            document.getElementById('admin-members-list').innerHTML = allMembers.map(m => `
-                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
-                    <span class="font-bold text-sm text-slate-700">${m.name}</span>
-                    <button class="px-3 py-1 bg-white border rounded-lg text-xs font-bold text-blue-600" onclick="window.editEntry('member', '${m.id}')">Edit</button>
+            document.getElementById('admin-members').innerHTML = members.map(m => `
+                <div class="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
+                    <span class="font-bold text-slate-700">${m.name}</span>
+                    <button onclick="window.openEditor('member', '${m.id}')" class="text-blue-600 font-black text-[10px] uppercase">Edit</button>
                 </div>
             `).join('');
         }
 
-        // EDITOR
-        window.editEntry = (type, id) => {
-            currentType = type;
-            const data = (type === 'event' ? allEvents : allMembers).find(i => i.id === id);
-            document.getElementById('edit-id').value = id || '';
-            toggle('btn-delete-entry', !!id);
-            document.getElementById('editor-title').innerText = id ? `Edit ${type}` : `Add ${type}`;
-            
-            const fields = type === 'event' ? 
-                [['name','Name'],['location','Location'],['time','Time'],['endTime','End Time']] :
-                [['name','Name'],['tribe','Tribe'],['apartment','Apartment']];
-            
-            document.getElementById('form-fields').innerHTML = fields.map(([key, label]) => `
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">${label}</label>
-                    <input id="f-${key}" value="${data?.[key] || ''}" class="w-full bg-slate-50 rounded-xl p-4 font-medium outline-none border-2 border-transparent focus:border-blue-500 transition-all">
-                </div>
-            `).join('');
-            toggle('editor-modal', true);
-        };
-
-        document.getElementById('btn-admin-add-event').onclick = () => window.editEntry('event');
-        document.getElementById('btn-admin-add-member').onclick = () => window.editEntry('member');
-        document.getElementById('btn-close-editor').onclick = () => toggle('editor-modal', false);
-
-        document.getElementById('editor-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-id').value;
-            const col = currentType === 'event' ? 'events' : 'members';
-            const payload = {};
-            document.querySelectorAll('#form-fields input').forEach(i => payload[i.id.split('-')[1]] = i.value);
-            
-            if (id) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id), payload);
-            else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', col), payload);
-            toggle('editor-modal', false);
-        };
-
-        document.getElementById('btn-delete-entry').onclick = async () => {
-            const id = document.getElementById('edit-id').value;
-            const col = currentType === 'event' ? 'events' : 'members';
-            if (id && confirm('Delete?')) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
-                toggle('editor-modal', false);
-            }
-        };
-
         // CLOCK
         setInterval(() => {
-            document.getElementById('current-time-display').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+            ui.set('clock', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
         }, 1000);
+
     </script>
 </body>
 </html>
