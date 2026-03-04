@@ -20,7 +20,6 @@
         .input-pill { width: 100%; background: #f1f5f9; border: 2px solid transparent; border-radius: 1rem; padding: 0.75rem 1rem; outline: none; font-weight: 600; font-size: 14px; }
         .input-pill:focus { border-color: #2563eb; background: white; }
         
-        /* Smooth Fade In instead of jumping */
         .reveal-anim { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
@@ -81,6 +80,7 @@
                     <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                     
+                    <!-- This div is hidden for Admins to save space, but shown for regular users -->
                     <div id="attendee-widgets" class="grid grid-cols-2 gap-3 mt-6">
                         <button id="btn-show-tribe" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 btn-press text-left">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Tribe</span>
@@ -93,6 +93,7 @@
                     </div>
                 </div>
 
+                <!-- Admin specific widget -->
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
                     <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
                     <div class="grid grid-cols-2 gap-3">
@@ -169,7 +170,7 @@
         function syncData() {
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
                 allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                lastRenderedTimeStr = ""; // Force re-render on data change
+                lastRenderedTimeStr = ""; 
                 renderSchedule();
             }, (err) => console.error(err));
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
@@ -178,7 +179,6 @@
         }
 
         function startClock() {
-            // Update loop checks every second, but renderSchedule only fires on a new minute
             setInterval(() => {
                 const nowTime = getCurrentTimeStr();
                 if (nowTime !== lastRenderedTimeStr) {
@@ -231,7 +231,6 @@
                     `;
                 }).join('');
 
-            // Only update DOM if content has changed to prevent jitter
             const newContent = html || '<div class="text-center py-20 text-slate-300 font-bold">No active events right now.</div>';
             if (feed.innerHTML !== newContent) {
                 feed.innerHTML = newContent;
@@ -329,9 +328,11 @@
             
             const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
             document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
+            // Hide tribe/apt buttons for admins to clear space
+            document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
             
             currentUserData = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
-            if(currentUserData) {
+            if(currentUserData && !isAdmin) {
                 document.getElementById('display-tribe').innerText = currentUserData.tribe || "None";
                 document.getElementById('display-apt').innerText = currentUserData.apt || "None";
             }
