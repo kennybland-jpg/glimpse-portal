@@ -7,37 +7,46 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #020617; margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .glass-card { background: white; width: 90%; max-width: 380px; border-radius: 2.5rem; padding: 2.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        body { font-family: 'Inter', sans-serif; background-color: #020617; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow-x: hidden; }
+        .glass-card { background: white; width: 95%; max-width: 420px; border-radius: 2.5rem; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
         .btn-press:active { transform: scale(0.96); }
         #app-view { display: none; position: fixed; inset: 0; background: #ffffff; z-index: 100; overflow-y: auto; }
         .nav-item { transition: all 0.2s ease; color: #94a3b8; cursor: pointer; }
         .nav-item.active { background-color: #2563eb; color: white; transform: translateY(-4px); }
         .view-content { display: none; }
         .view-content.active { display: block; }
+        #setup-overlay { display: none; position: fixed; inset: 0; background: #020617; z-index: 1000; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
         .admin-widget { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-        .full-modal { display: none; position: fixed; inset: 0; background: white; z-index: 200; overflow-y: auto; }
-        .input-field { width: 100%; background: #f1f5f9; border-radius: 1rem; padding: 1rem; font-weight: bold; border: 2px solid transparent; outline: none; transition: all 0.2s; }
-        .input-field:focus { border-color: #2563eb; background: white; }
-        #loading-toast { display: none; position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: #0f172a; color: white; padding: 1rem 2rem; border-radius: 1rem; font-weight: bold; font-size: 0.8rem; z-index: 300; pointer-events: none; }
-        #setup-overlay { display: none; position: fixed; inset: 0; background: #020617; z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
     </style>
 </head>
 <body>
 
-    <!-- Improved Firebase Setup Wizard -->
+    <!-- Ultra-Resilient Firebase Setup Wizard -->
     <div id="setup-overlay">
-        <div class="glass-card max-w-full">
-            <h2 class="text-2xl font-black mb-2">Connect Firebase</h2>
-            <p class="text-xs text-slate-500 mb-6 font-bold uppercase tracking-tight">Required for External Hosting</p>
-            <p class="text-[10px] text-slate-400 mb-2 leading-relaxed">Paste the <b>firebaseConfig</b> code block from your project settings:</p>
-            <textarea id="config-input" class="w-full h-48 bg-slate-100 rounded-2xl p-4 font-mono text-[10px] mb-4 outline-none focus:ring-2 ring-blue-500" placeholder='const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "...",
-  ...
-};'></textarea>
-            <button id="btn-save-config" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg btn-press">Initialize Database</button>
-            <button id="btn-clear-cache" class="w-full mt-2 py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Reset Config</button>
+        <div class="glass-card">
+            <h2 class="text-2xl font-black mb-1">Database Setup</h2>
+            <p class="text-[11px] text-slate-500 mb-6 font-bold uppercase tracking-widest">Step 1: Link your Project</p>
+            
+            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl mb-6">
+                <p class="text-[11px] text-blue-800 leading-relaxed">
+                    <b>Instructions:</b><br>
+                    1. Go to Firebase Project Settings.<br>
+                    2. Select the <b>"npm"</b> tab under "SDK setup and configuration".<br>
+                    3. Copy the <b>entire</b> code block and paste it below.
+                </p>
+            </div>
+
+            <textarea id="config-input" 
+                class="w-full h-40 bg-slate-100 rounded-2xl p-4 font-mono text-[10px] mb-4 outline-none focus:ring-2 ring-blue-500 border-none" 
+                placeholder='Paste the config code here...'></textarea>
+            
+            <button id="btn-save-config" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg btn-press">Connect & Launch</button>
+            
+            <div id="parse-error" class="hidden mt-4 p-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold text-center">
+                Invalid format. Please ensure you copied the whole object.
+            </div>
+
+            <button id="btn-clear-cache" class="w-full mt-4 py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Reset Local Cache</button>
         </div>
     </div>
 
@@ -54,7 +63,7 @@
         </div>
     </div>
 
-    <!-- MAIN APP -->
+    <!-- MAIN APP (Same as before) -->
     <div id="app-view">
         <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
             <div id="view-schedule" class="view-content active">
@@ -72,6 +81,7 @@
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                 </div>
 
+                <!-- Admin Section -->
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
                     <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
                     <div class="grid grid-cols-2 gap-3">
@@ -80,7 +90,7 @@
                     </div>
                 </div>
 
-                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase">Log Out & Reset</button>
+                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase">Logout & Reset Config</button>
             </div>
 
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
@@ -92,190 +102,130 @@
         </div>
     </div>
 
-    <!-- Admin Modal -->
-    <div id="admin-modal" class="full-modal">
-        <div class="max-w-md mx-auto p-8">
-            <header class="flex items-center justify-between mb-8">
-                <div><h2 id="modal-title" class="text-3xl font-black text-slate-900">Manage</h2></div>
-                <button id="btn-close-modal" class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold">✕</button>
-            </header>
-            
-            <div id="modal-form" class="bg-slate-50 p-6 rounded-[2rem] mb-8">
-                <div id="form-fields" class="space-y-3"></div>
-                <button id="btn-save-item" class="w-full mt-6 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">Save Entry</button>
-            </div>
-
-            <h3 class="font-black text-xs uppercase tracking-widest text-slate-400 mb-4">Current List</h3>
-            <div id="modal-list" class="space-y-3 pb-24"></div>
-        </div>
-    </div>
-
-    <div id="loading-toast">Processing...</div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, addDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const ADMIN_PASS = 'RDS12admin';
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-prod';
-        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026-v1';
         let db, auth, user;
-        let currentMode = 'events';
-        let editingId = null;
 
-        function showToast(msg) {
-            const t = document.getElementById('loading-toast');
-            t.innerText = msg; t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
-        }
-
-        // --- RELAXED CONFIG PARSER ---
-        function parseFirebaseConfig(raw) {
+        // --- THE "SUPER PARSER" ---
+        function parseConfig(input) {
             try {
-                // 1. Extract just the object part {}
-                let cleaned = raw.trim();
-                const match = cleaned.match(/\{[\s\S]*\}/);
-                if (!match) throw new Error("No object found");
-                cleaned = match[0];
+                // Find anything that looks like an object { ... }
+                const match = input.match(/\{[\s\S]*\}/);
+                if (!match) return null;
+                
+                let str = match[0];
+                
+                // 1. Remove comments
+                str = str.replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+                
+                // 2. Extract key-value pairs manually to avoid JSON.parse strictness
+                const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+                const config = {};
+                
+                keys.forEach(key => {
+                    const regex = new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`);
+                    const valMatch = str.match(regex);
+                    if (valMatch) config[key] = valMatch[1];
+                });
 
-                // 2. Clean up common JS syntax to make it valid JSON
-                cleaned = cleaned
-                    .replace(/\/\/.*/g, '')               // Remove single line comments
-                    .replace(/\/\*[\s\S]*?\*\//g, '')     // Remove multi-line comments
-                    .replace(/(\w+):/g, '"$1":')          // Quote keys
-                    .replace(/'/g, '"')                   // Swap single quotes for double
-                    .replace(/,(\s*[\]}])/g, '$1')        // Remove trailing commas
-                    .replace(/;\s*$/, '');                // Remove trailing semicolon
-
-                return JSON.parse(cleaned);
+                // Validate we got the essentials
+                if (config.apiKey && config.projectId && config.appId) return config;
+                return null;
             } catch (e) {
-                console.error("Parse Error:", e);
                 return null;
             }
         }
 
-        async function startFirebase(configData) {
+        async function initFirebase(config) {
             try {
-                const firebaseApp = initializeApp(configData);
-                auth = getAuth(firebaseApp);
-                db = getFirestore(firebaseApp);
+                const app = initializeApp(config);
+                auth = getAuth(app);
+                db = getFirestore(app);
                 
-                onAuthStateChanged(auth, (u) => { 
-                    user = u; 
-                    if (u) loadSchedule(); 
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, (u) => {
+                    if (u) {
+                        user = u;
+                        document.getElementById('setup-overlay').style.display = 'none';
+                        loadEvents();
+                    }
                 });
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                document.getElementById('setup-overlay').style.display = 'none';
             } catch (err) {
-                console.error("Firebase Auth Error:", err);
-                document.getElementById('setup-overlay').style.display = 'flex';
+                console.error(err);
+                document.getElementById('parse-error').classList.remove('hidden');
             }
         }
 
-        // Initialize from storage or show prompt
-        const savedConfig = localStorage.getItem('glimpse_fb_config');
-        if (savedConfig) {
-            startFirebase(JSON.parse(savedConfig));
-        } else if (typeof __firebase_config !== 'undefined' && JSON.parse(__firebase_config).apiKey !== 'demo') {
-            startFirebase(JSON.parse(__firebase_config));
+        function loadEvents() {
+            if (!db) return;
+            // Using Rule 2: Simple query, fetch all
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'events');
+            onSnapshot(q, (snap) => {
+                const list = snap.docs.map(d => d.data());
+                document.getElementById('schedule-feed').innerHTML = list
+                    .sort((a,b) => (a.time||'').localeCompare(b.time||''))
+                    .map(e => `
+                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || '??:??'}</span>
+                            <h3 class="text-xl font-black text-slate-800 mt-3">${e.name}</h3>
+                            <p class="text-xs text-slate-400 font-bold mt-1">${e.location || 'Main Hall'}</p>
+                        </div>
+                    `).join('') || '<div class="text-center py-10 text-slate-300 font-bold">No events posted yet.</div>';
+            }, (err) => console.error("Firestore Error:", err));
+        }
+
+        // Setup logic
+        const stored = localStorage.getItem('glimpse_config_v2');
+        if (stored) {
+            initFirebase(JSON.parse(stored));
         } else {
             document.getElementById('setup-overlay').style.display = 'flex';
         }
 
         document.getElementById('btn-save-config').onclick = () => {
             const raw = document.getElementById('config-input').value;
-            const parsed = parseFirebaseConfig(raw);
-            if (parsed && parsed.apiKey) {
-                localStorage.setItem('glimpse_fb_config', JSON.stringify(parsed));
+            const parsed = parseConfig(raw);
+            if (parsed) {
+                localStorage.setItem('glimpse_config_v2', JSON.stringify(parsed));
                 location.reload();
             } else {
-                alert("Invalid format. Please copy the entire config object from Firebase.");
+                document.getElementById('parse-error').classList.remove('hidden');
             }
         };
 
         document.getElementById('btn-clear-cache').onclick = () => {
-            localStorage.removeItem('glimpse_fb_config');
+            localStorage.clear();
             location.reload();
         };
 
-        // --- Core Functions ---
-        function loadSchedule() {
-            if (!db) return;
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
-                const events = snap.docs.map(d => d.data());
-                document.getElementById('schedule-feed').innerHTML = events.sort((a,b)=> (a.time||"").localeCompare(b.time||"")).map(e => `
-                    <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                        <span class="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-wider">${e.time || 'TBD'}</span>
-                        <h4 class="text-xl font-black text-slate-900 mt-3 mb-1">${e.name}</h4>
-                        <p class="text-sm text-slate-400 font-bold">${e.location || 'Venue'}</p>
-                    </div>
-                `).join('') || '<p class="text-center text-slate-400 py-10 font-bold">No events yet.</p>';
-            });
-        }
-
-        document.getElementById('btn-save-item').onclick = async () => {
-            if (!user || !db) return showToast("DB Not Ready");
-            const inputs = document.querySelectorAll('#form-fields input');
-            const data = {};
-            inputs.forEach(i => data[i.id.replace('f-','')] = i.value);
-            
-            try {
-                showToast("Saving...");
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', currentMode), { ...data, createdAt: Date.now() });
-                inputs.forEach(i => i.value = '');
-                showToast("Success!");
-            } catch (e) { showToast("Error: " + e.message); }
-        };
-
-        window.deleteAdminItem = async (id) => {
-            if (confirm("Delete this?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
-        };
-
-        function openAdminModal(mode) {
-            currentMode = mode;
-            document.getElementById('modal-title').innerText = mode === 'events' ? 'Manage Events' : 'Manage Members';
-            document.getElementById('form-fields').innerHTML = mode === 'events' 
-                ? `<input id="f-name" class="input-field" placeholder="Event Name"><input id="f-time" class="input-field" placeholder="Time (e.g. 14:00)"><input id="f-location" class="input-field" placeholder="Location">`
-                : `<input id="f-name" class="input-field" placeholder="Full Name"><input id="f-tribe" class="input-field" placeholder="Tribe Name"><input id="f-apt" class="input-field" placeholder="Apartment #">`;
-            document.getElementById('admin-modal').style.display = 'block';
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', currentMode), (snap) => {
-                document.getElementById('modal-list').innerHTML = snap.docs.map(d => `
-                    <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center">
-                        <span class="font-bold text-slate-800 text-sm">${d.data().name}</span>
-                        <button onclick="window.deleteAdminItem('${d.id}')" class="text-red-400 font-bold text-[10px] uppercase">Remove</button>
-                    </div>
-                `).join('');
-            });
-        }
-
         document.getElementById('btn-enter').onclick = () => {
-            const val = document.getElementById('user-input').value.trim();
-            if (!val) return;
-            const isAdmin = (val.toUpperCase() === ADMIN_PASS.toUpperCase());
-            document.getElementById('display-name').innerText = isAdmin ? "Admin" : val;
-            document.getElementById('profile-name').innerText = isAdmin ? "Admin" : val;
+            const name = document.getElementById('user-input').value.trim();
+            if (!name) return;
+            const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
+            document.getElementById('display-name').innerText = isAdmin ? 'Admin' : name;
+            document.getElementById('profile-name').innerText = isAdmin ? 'Admin' : name;
             if (isAdmin) document.getElementById('admin-controls').classList.remove('hidden');
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
         };
 
-        document.getElementById('btn-manage-events').onclick = () => openAdminModal('events');
-        document.getElementById('btn-manage-members').onclick = () => openAdminModal('members');
-        document.getElementById('btn-close-modal').onclick = () => document.getElementById('admin-modal').style.display = 'none';
-        document.querySelectorAll('.nav-item').forEach(btn => btn.onclick = () => {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            btn.classList.add('active');
-            const view = btn.getAttribute('data-view');
-            document.querySelectorAll('.view-content').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
+        document.getElementById('btn-logout').onclick = () => {
+            localStorage.clear();
+            location.reload();
+        };
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.onclick = () => {
+                const view = btn.dataset.view;
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n === btn));
+                document.querySelectorAll('.view-content').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
+            };
         });
-        document.getElementById('btn-logout').onclick = () => { localStorage.removeItem('glimpse_fb_config'); location.reload(); };
     </script>
 </body>
 </html>
