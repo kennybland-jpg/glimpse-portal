@@ -1,288 +1,589 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Glimpse Event Portal</title>
-    <!-- Tailwind CSS for Styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React and Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/lucide-react@latest"></script>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  onSnapshot, 
+  updateDoc, 
+  addDoc,
+  deleteDoc,
+  query
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  signInWithCustomToken, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Calendar, 
+  Users, 
+  MapPin, 
+  Lock, 
+  Unlock, 
+  ShieldCheck, 
+  Home, 
+  Info,
+  LogOut,
+  Edit2,
+  X,
+  User,
+  Plus,
+  Trash2,
+  KeyRound,
+  Search,
+  Sparkles,
+  Send,
+  Loader2,
+  ChevronLeft,
+  Clock,
+  ArrowRight,
+  Circle,
+  Eye,
+  Filter
+} from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'refuge-glimpse-2026';
+const apiKey = ""; 
+
+const App = () => {
+  const [fbUser, setFbUser] = useState(null);
+  const [appUser, setAppUser] = useState(null);
+  const [view, setView] = useState('schedule'); 
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showExpiredEvents, setShowExpiredEvents] = useState(false);
+
+  // Firestore Data State
+  const [attendees, setAttendees] = useState([]);
+  const [schedule, setSchedule] = useState([]);
+  
+  // Login UI State
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAttendeeLogin, setShowAttendeeLogin] = useState(false);
+  const [loginInput, setLoginInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  // Editing State
+  const [isEditingAttendee, setIsEditingAttendee] = useState(null); 
+  const [editUserForm, setEditUserForm] = useState({ name: "", team: "", room: "" });
+  
+  const [isEditingEvent, setIsEditingEvent] = useState(null); 
+  const [editEventForm, setEditEventForm] = useState({ 
+    title: "", 
+    timeLabel: "", 
+    startTime: "", 
+    endTime: "", 
+    location: "" 
+  });
+
+  // Directory Filter State
+  const [directoryFilter, setDirectoryFilter] = useState({ type: null, value: null });
+
+  // 1. Authentication Lifecycle
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
         }
-        .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
-    </style>
-</head>
-<body class="bg-slate-900">
-    <div id="root"></div>
+      } catch (err) {
+        console.error("Auth Error:", err);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setFbUser);
+    return () => unsubscribe();
+  }, []);
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { 
-            Calendar, Users, MapPin, Lock, Unlock, ShieldCheck, 
-            Home, Info, LogOut, Edit2, X, User, Plus, Trash2, 
-            KeyRound, Search, ChevronLeft, Filter, Clock 
-        } = lucideReact;
+  // 2. Real-time Firestore Listeners
+  useEffect(() => {
+    if (!fbUser) return;
 
-        // ==========================================
-        // STEP 4: PASTE YOUR FIREBASE CONFIG BELOW
-        // ==========================================
-        const firebaseConfig = {
-            apiKey: "PASTE_YOUR_API_KEY_HERE",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        // ==========================================
+    const attendeesRef = collection(db, 'artifacts', appId, 'public', 'data', 'attendees');
+    const unsubAttendees = onSnapshot(attendeesRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAttendees(list);
+    }, (err) => console.error("Attendees Sync Error:", err));
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const appId = 'glimpse-live-v1';
+    const scheduleRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedule');
+    const unsubSchedule = onSnapshot(scheduleRef, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort primarily by startTime
+      const sorted = list.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+      setSchedule(sorted);
+    }, (err) => console.error("Schedule Sync Error:", err));
 
-        const App = () => {
-            const [fbUser, setFbUser] = useState(null);
-            const [appUser, setAppUser] = useState(null);
-            const [view, setView] = useState('schedule'); 
-            const [currentTime, setCurrentTime] = useState(new Date());
-            const [showExpiredEvents, setShowExpiredEvents] = useState(false);
+    return () => {
+      unsubAttendees();
+      unsubSchedule();
+    };
+  }, [fbUser]);
 
-            const [attendees, setAttendees] = useState([]);
-            const [schedule, setSchedule] = useState([]);
-            
-            const [showAdminLogin, setShowAdminLogin] = useState(false);
-            const [showAttendeeLogin, setShowAttendeeLogin] = useState(false);
-            const [loginInput, setLoginInput] = useState("");
-            const [loginError, setLoginError] = useState("");
-            const [editingUserId, setEditingUserId] = useState(null);
-            const [editUserForm, setEditUserForm] = useState({ name: "", team: "", room: "" });
-            const [editingEventId, setEditingEventId] = useState(null);
-            const [editEventForm, setEditEventForm] = useState({ title: "", timeLabel: "", unlockTime: "", location: "" });
-            const [isAddingAttendee, setIsAddingAttendee] = useState(false);
+  // 3. Clock Update (Every minute)
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-            useEffect(() => {
-                auth.signInAnonymously().catch(err => console.error("Auth:", err));
-                const unsubscribe = auth.onAuthStateChanged(setFbUser);
-                return () => unsubscribe();
-            }, []);
+  // --- Handlers ---
+  const handleAdminSubmit = (e) => {
+    e?.preventDefault();
+    if (loginInput === "RDS12admin") {
+      setAppUser({ id: 'staff-id', name: 'Staff Member', role: 'admin', team: 'Staff', room: 'Command Center' });
+      setShowAdminLogin(false);
+      setLoginInput("");
+      setLoginError("");
+    } else {
+      setLoginError("Incorrect Password");
+    }
+  };
 
-            useEffect(() => {
-                if (!fbUser) return;
-                const unsubAttendees = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees')
-                    .onSnapshot(snap => {
-                        setAttendees(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                    });
+  const handleAttendeeLogin = (e) => {
+    e?.preventDefault();
+    const name = loginInput.trim();
+    if (!name) return;
+    
+    const found = attendees.find(a => a.name.toLowerCase().includes(name.toLowerCase()));
+    if (found) {
+      setAppUser(found);
+    } else {
+      setAppUser({ id: 'guest-' + Date.now(), name: name, role: 'attendee', team: 'Guest', room: 'TBD' });
+    }
+    setShowAttendeeLogin(false);
+    setLoginInput("");
+    setLoginError("");
+  };
 
-                const unsubSchedule = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedule')
-                    .onSnapshot(snap => {
-                        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setSchedule(list.sort((a, b) => new Date(a.unlockTime) - new Date(b.unlockTime)));
-                    });
+  const deleteEvent = async (id) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedule', id));
+  };
 
-                return () => { unsubAttendees(); unsubSchedule(); };
-            }, [fbUser]);
+  const saveEvent = async () => {
+    if (!editEventForm.title || !editEventForm.startTime || !editEventForm.endTime) return;
+    try {
+      if (isEditingEvent === 'new') {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedule'), editEventForm);
+      } else {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedule', isEditingEvent), editEventForm);
+      }
+      setIsEditingEvent(null);
+      setEditEventForm({ title: "", timeLabel: "", startTime: "", endTime: "", location: "" });
+    } catch (e) {
+      console.error("Error saving event:", e);
+    }
+  };
 
-            useEffect(() => {
-                const timer = setInterval(() => setCurrentTime(new Date()), 30000);
-                return () => clearInterval(timer);
-            }, []);
+  const saveAttendee = async () => {
+    if (!editUserForm.name) return;
+    if (isEditingAttendee === 'new') {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendees'), {...editUserForm, role: 'attendee'});
+    } else {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendees', isEditingAttendee), editUserForm);
+    }
+    setIsEditingAttendee(null);
+    setEditUserForm({ name: "", team: "", room: "" });
+  };
 
-            const handleAdminSubmit = (e) => {
-                e?.preventDefault();
-                if (loginInput === "RDS12admin") {
-                    setAppUser({ id: 'admin-id', name: 'Staff Member', role: 'admin' });
-                    setShowAdminLogin(false);
-                    setLoginInput("");
-                } else { setLoginError("Incorrect Password"); }
-            };
+  const visibleSchedule = schedule.filter(event => {
+    if (showExpiredEvents) return true;
+    const end = new Date(event.endTime);
+    return end >= currentTime;
+  });
 
-            const handleAttendeeLogin = (e) => {
-                e?.preventDefault();
-                const found = attendees.find(a => a.name.toLowerCase().includes(loginInput.toLowerCase().trim()));
-                if (found) {
-                    setAppUser(found);
-                    setShowAttendeeLogin(false);
-                    setLoginInput("");
-                } else { setLoginError("Name not found."); }
-            };
+  if (!appUser) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 font-sans relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-500 rounded-full blur-[100px]" />
+        </div>
 
-            const saveEventChanges = async (id) => {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedule').doc(id).update(editEventForm);
-                setEditingEventId(null);
-            };
+        <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-10 text-center z-10 animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-lg animate-bounce">
+            <Sparkles className="text-white w-10 h-10" />
+          </div>
+          <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimpse 2026</h1>
+          <p className="text-slate-500 mb-10 font-medium">RDS Preview Weekend</p>
+          
+          <div className="space-y-4">
+            <button 
+              onClick={() => { setShowAttendeeLogin(true); setLoginError(""); }} 
+              className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-95"
+            >
+              Attendee Login
+            </button>
+            <button 
+              onClick={() => { setShowAdminLogin(true); setLoginError(""); }} 
+              className="w-full py-5 border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95"
+            >
+              Staff Portal
+            </button>
+          </div>
+        </div>
 
-            const createNewEvent = async () => {
-                const newEvent = { title: "New Event", timeLabel: "12:00 PM", unlockTime: new Date().toISOString().slice(0, 16), location: "Main Hall" };
-                const res = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedule').add(newEvent);
-                setEditingEventId(res.id);
-                setEditEventForm(newEvent);
-            };
-
-            // Filters the schedule for the main view
-            const visibleSchedule = schedule.filter(event => {
-                if (showExpiredEvents || activeUser?.role === 'admin') return true;
-                return new Date(event.unlockTime) >= currentTime;
-            });
-
-            if (!appUser) {
-                return (
-                    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-                        <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-10 text-center">
-                            <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-xl rotate-3">
-                                <Users className="text-white w-10 h-10 -rotate-3" />
-                            </div>
-                            <h1 className="text-4xl font-black text-slate-900 mb-2">Glimpse</h1>
-                            <p className="text-slate-500 mb-10 font-medium">RDS Preview Weekend</p>
-                            <div className="space-y-4">
-                                <button onClick={() => { setShowAttendeeLogin(true); setLoginError(""); }} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">Attendee Login</button>
-                                <button onClick={() => { setShowAdminLogin(true); setLoginError(""); }} className="w-full py-5 border-2 border-slate-100 text-slate-600 rounded-2xl font-bold">Staff Portal</button>
-                            </div>
-                        </div>
-
-                        {(showAdminLogin || showAttendeeLogin) && (
-                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
-                                <div className="bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="font-black text-slate-800">{showAdminLogin ? "Staff Auth" : "Login"}</h3>
-                                        <button onClick={() => {setShowAdminLogin(false); setShowAttendeeLogin(false);}}><X size={20} className="text-slate-400" /></button>
-                                    </div>
-                                    <form onSubmit={showAdminLogin ? handleAdminSubmit : handleAttendeeLogin} className="space-y-6">
-                                        <input 
-                                            autoFocus
-                                            type={showAdminLogin ? "password" : "text"}
-                                            placeholder={showAdminLogin ? "Password" : "First Name"}
-                                            value={loginInput}
-                                            onChange={(e) => setLoginInput(e.target.value)}
-                                            className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none"
-                                        />
-                                        {loginError && <p className="text-red-500 text-xs font-bold">{loginError}</p>}
-                                        <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold">Continue</button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            }
-
-            const activeUser = appUser.role === 'admin' ? appUser : (attendees.find(a => a.id === appUser.id) || appUser);
-
-            return (
-                <div className="min-h-screen bg-slate-50 pb-28 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden">
-                    <header className="bg-white border-b border-slate-100 px-8 pt-14 pb-8 flex-none">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h1 className="text-[10px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Portal</h1>
-                                <p className="text-3xl font-black text-slate-900 tracking-tight">Glimpse</p>
-                            </div>
-                            <button onClick={() => {setAppUser(null); setView('schedule');}} className="p-3 bg-slate-50 rounded-2xl text-slate-400"><LogOut size={20} /></button>
-                        </div>
-                    </header>
-
-                    <main className="flex-1 overflow-y-auto px-6 py-6 scrollbar-hide">
-                        {view === 'schedule' && (
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between px-2">
-                                    <h2 className="text-xl font-black text-slate-800">Schedule</h2>
-                                    <button 
-                                        onClick={() => setShowExpiredEvents(!showExpiredEvents)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${showExpiredEvents ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}
-                                    >
-                                        {showExpiredEvents ? 'Full View' : 'Live Now'}
-                                        <Filter size={12} />
-                                    </button>
-                                </div>
-                                <div className="space-y-4">
-                                    {visibleSchedule.map((item) => {
-                                        const isUnlocked = currentTime >= new Date(item.unlockTime) || activeUser.role === 'admin';
-                                        return (
-                                            <div key={item.id} className={`rounded-[2rem] p-6 border ${isUnlocked ? 'bg-white shadow-md border-slate-100' : 'bg-slate-100/50 border-slate-200 opacity-60'}`}>
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-blue-50 text-blue-600">{item.timeLabel}</span>
-                                                    {isUnlocked ? <Unlock size={16} className="text-green-500" /> : <Lock size={16} className="text-slate-400" />}
-                                                </div>
-                                                <h3 className={`text-lg font-black ${isUnlocked ? 'text-slate-800' : 'text-slate-400'}`}>
-                                                    {isUnlocked ? item.title : "Mystery Event"}
-                                                </h3>
-                                                {isUnlocked && <div className="mt-3 flex items-center text-slate-500 text-sm"><MapPin size={14} className="mr-2 text-blue-500" />{item.location}</div>}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'manageEvents' && (
-                            <div className="space-y-4">
-                                <button onClick={() => setView('admin')} className="text-blue-600 font-bold flex items-center mb-4"><ChevronLeft size={20}/> Back</button>
-                                <button onClick={createNewEvent} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center mb-4"><Plus size={20} className="mr-2"/> New Event</button>
-                                {schedule.map(event => (
-                                    <div key={event.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                                        <div className="flex justify-between mb-4">
-                                            <div>
-                                                <h3 className="font-black">{event.title}</h3>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase">{event.timeLabel} • {event.location}</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => { setEditingEventId(event.id); setEditEventForm(event); }} className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Edit2 size={16}/></button>
-                                                <button onClick={() => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('schedule').doc(event.id).delete()} className="p-2 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16}/></button>
-                                            </div>
-                                        </div>
-                                        {editingEventId === event.id && (
-                                            <div className="space-y-4 pt-4 border-t">
-                                                <input className="w-full p-3 bg-slate-50 rounded-xl border" value={editEventForm.title} onChange={e => setEditEventForm({...editEventForm, title: e.target.value})} />
-                                                <input type="datetime-local" className="w-full p-3 bg-slate-50 rounded-xl border" value={editEventForm.unlockTime} onChange={e => setEditEventForm({...editEventForm, unlockTime: e.target.value})} />
-                                                <button onClick={() => saveEventChanges(event.id)} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold">Save</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {view === 'admin' && (
-                            <div className="space-y-6">
-                                <h2 className="text-xl font-black text-slate-800">Staff Tools</h2>
-                                <button onClick={() => setView('manageEvents')} className="w-full flex items-center justify-between bg-white border p-8 rounded-[2rem] shadow-sm">
-                                    <div className="text-left"><h3 className="font-black">Schedule</h3><p className="text-xs text-slate-400">{schedule.length} Events</p></div>
-                                    <Calendar className="text-blue-500" />
-                                </button>
-                            </div>
-                        )}
-                    </main>
-
-                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[85%] max-w-[340px] bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-[2.5rem] p-2 flex justify-around items-center z-50">
-                        <button onClick={() => setView('schedule')} className={`p-4 rounded-[2rem] flex-1 flex justify-center ${view === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}><Calendar size={22} /></button>
-                        {activeUser.role === 'admin' && (
-                            <button onClick={() => setView('admin')} className={`p-4 rounded-[2rem] flex-1 flex justify-center ${view === 'admin' || view === 'manageEvents' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}><ShieldCheck size={22} /></button>
-                        )}
-                    </nav>
+        {(showAdminLogin || showAttendeeLogin) && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-black text-slate-800 text-lg">{showAdminLogin ? "Staff Portal" : "Attendee Login"}</h3>
+                <button onClick={() => {setShowAdminLogin(false); setShowAttendeeLogin(false); setLoginInput("");}} className="p-2 hover:bg-slate-100 rounded-full">
+                  <X size={20} className="text-slate-400" />
+                </button>
+              </div>
+              <form onSubmit={showAdminLogin ? handleAdminSubmit : handleAttendeeLogin} className="space-y-6">
+                <div>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                    {showAdminLogin ? "Access Password" : "First Name"}
+                  </label>
+                  <input 
+                    autoFocus
+                    type={showAdminLogin ? "password" : "text"}
+                    placeholder={showAdminLogin ? "••••••••" : "Your Name"}
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 text-slate-800 font-medium focus:outline-none transition-all"
+                  />
+                  {loginError && <p className="text-red-500 text-xs font-bold mt-2 ml-1">{loginError}</p>}
                 </div>
-            );
-        };
+                <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl hover:bg-black transition-all">
+                  Continue
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+  const activeUser = appUser.role === 'admin' ? appUser : (attendees.find(a => a.id === appUser.id) || appUser);
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-28 max-w-md mx-auto shadow-2xl relative flex flex-col font-sans overflow-hidden">
+      <header className="bg-white border-b border-slate-100 px-8 pt-14 pb-8 flex-none">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-[11px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Portal</h1>
+            <p className="text-3xl font-black text-slate-900 tracking-tight leading-none">Glimpse</p>
+          </div>
+          <button onClick={() => {setAppUser(null); setView('schedule');}} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-red-500 transition-all">
+            <LogOut size={20} />
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-6 py-6 scrollbar-hide">
+        {view === 'schedule' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex items-center justify-between mb-6 px-2">
+              <h2 className="text-xl font-black text-slate-800">Schedule</h2>
+              <button 
+                onClick={() => setShowExpiredEvents(!showExpiredEvents)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${showExpiredEvents ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}
+              >
+                {showExpiredEvents ? 'Full View' : 'Live Now'}
+                <Filter size={12} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {visibleSchedule.map((item) => {
+                const start = new Date(item.startTime);
+                const end = new Date(item.endTime);
+                const isUnlocked = currentTime >= start || activeUser.role === 'admin';
+                const isLive = currentTime >= start && currentTime <= end;
+                const isPast = currentTime > end;
+
+                return (
+                  <div key={item.id} className={`rounded-[2rem] p-6 transition-all border-2 ${
+                    isLive 
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-blue-200 shadow-xl scale-[1.02]' 
+                      : isUnlocked 
+                        ? (isPast ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-md')
+                        : 'bg-slate-100 border-transparent opacity-40'
+                  }`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isLive ? 'text-blue-100' : 'text-slate-400'}`}>
+                          {item.timeLabel}
+                        </span>
+                        {isLive && (
+                          <span className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
+                            <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
+                            Live
+                          </span>
+                        )}
+                      </div>
+                      {isUnlocked ? (
+                        <Unlock size={16} className={isLive ? 'text-white' : (isPast ? 'text-slate-300' : 'text-green-500')} />
+                      ) : (
+                        <Lock size={16} className="text-slate-400" />
+                      )}
+                    </div>
+                    <h3 className={`text-lg font-black ${isLive ? 'text-white' : (isPast ? 'text-slate-400' : 'text-slate-800')}`}>
+                      {isUnlocked ? item.title : "Mystery Event"}
+                    </h3>
+                    {isUnlocked && (
+                      <p className={`text-sm mt-2 flex items-center ${isLive ? 'text-blue-50 opacity-90' : 'text-slate-500'}`}>
+                        <MapPin size={14} className={`mr-2 ${isLive ? 'text-white' : (isPast ? 'text-slate-300' : 'text-blue-500')}`} />
+                        {item.location}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              {visibleSchedule.length === 0 && (
+                <div className="text-center py-20">
+                  <Calendar className="mx-auto w-12 h-12 text-slate-200 mb-4" />
+                  <p className="text-slate-400 font-medium">No events found matching current filter.</p>
+                  <button onClick={() => setShowExpiredEvents(true)} className="mt-4 text-blue-600 font-bold text-sm">Show Full Schedule</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === 'info' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 text-center">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <User size={30} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-800 mb-1">Hi, {activeUser.name.split(' ')[0]}!</h2>
+                <p className="text-sm text-slate-400 font-medium">Welcome to Glimpse 2026.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => { setView('directory'); setDirectoryFilter({ type: 'Tribe', value: activeUser.team }); }}
+                className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-xl text-left transition-all active:scale-95 group relative overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-100 transition-opacity">
+                   <ArrowRight size={16} />
+                </div>
+                <Users size={24} className="mb-4 opacity-80" />
+                <p className="text-[10px] uppercase font-black tracking-widest opacity-70 mb-1">Tribe</p>
+                <p className="text-xl font-black truncate">{activeUser.team || "None"}</p>
+              </button>
+              <button 
+                onClick={() => { setView('directory'); setDirectoryFilter({ type: 'Apartment', value: activeUser.room }); }}
+                className="bg-white border-2 border-slate-100 p-6 rounded-[2rem] text-left transition-all active:scale-95 group relative overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 text-slate-200 group-hover:text-blue-500 transition-colors">
+                   <ArrowRight size={16} />
+                </div>
+                <Home size={24} className="mb-4 text-blue-600" />
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">Apartment</p>
+                <p className="text-xl font-black text-slate-800 truncate">{activeUser.room || 'TBD'}</p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === 'directory' && (
+          <div className="animate-in fade-in slide-in-from-right-4 space-y-4">
+            <button onClick={() => setView('info')} className="flex items-center text-blue-600 font-bold mb-4"><ChevronLeft size={20}/> Back to Profile</button>
+            
+            <div className={`p-6 rounded-[2rem] ${directoryFilter.type === 'Tribe' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-white'} shadow-xl mb-6`}>
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-70 mb-1">{directoryFilter.type}</h3>
+              <p className="text-2xl font-black">{directoryFilter.value}</p>
+            </div>
+
+            <div className="space-y-3">
+              {attendees
+                .filter(a => directoryFilter.type === 'Tribe' ? a.team === directoryFilter.value : a.room === directoryFilter.value)
+                .map(person => (
+                  <div key={person.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center font-black text-blue-600">
+                        {person.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">{person.name} {person.id === activeUser.id ? "(You)" : ""}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          {directoryFilter.type === 'Tribe' ? `Apt ${person.room}` : `Tribe ${person.team}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        )}
+
+        {view === 'admin' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+            <h2 className="text-xl font-black text-slate-800 flex items-center ml-2">
+              <ShieldCheck className="mr-3 text-blue-600" /> Staff Tools
+            </h2>
+            <div className="grid gap-4">
+              <button onClick={() => setView('editAttendees')} className="flex items-center justify-between bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm hover:border-blue-300 transition-all">
+                <div className="text-left">
+                  <h3 className="font-black text-slate-800">Directory</h3>
+                  <p className="text-xs text-slate-400 uppercase tracking-widest">{attendees.length} Members</p>
+                </div>
+                <Users className="text-blue-500" />
+              </button>
+              <button onClick={() => setView('manageEvents')} className="flex items-center justify-between bg-white border border-slate-200 p-8 rounded-[2rem] shadow-sm hover:border-blue-300 transition-all">
+                <div className="text-left">
+                  <h3 className="font-black text-slate-800">Schedule</h3>
+                  <p className="text-xs text-slate-400 uppercase tracking-widest">{schedule.length} Events</p>
+                </div>
+                <Calendar className="text-blue-500" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === 'editAttendees' && (
+          <div className="space-y-4">
+            <button onClick={() => setView('admin')} className="flex items-center text-blue-600 font-bold mb-4"><ChevronLeft size={20}/> Back</button>
+            
+            {!isEditingAttendee ? (
+              <button onClick={() => { setIsEditingAttendee('new'); setEditUserForm({ name: "", team: "", room: "" }); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center mb-4"><Plus size={20} className="mr-2"/> Add Member</button>
+            ) : (
+              <div className="bg-white p-6 rounded-[2rem] border-2 border-blue-100 space-y-3 mb-4 shadow-lg animate-in slide-in-from-top-4">
+                <h3 className="font-black text-slate-800 mb-2">{isEditingAttendee === 'new' ? 'New Roster Member' : 'Edit Member'}</h3>
+                <input placeholder="Full Name" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} />
+                <input placeholder="Tribe" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editUserForm.team} onChange={e => setEditUserForm({...editUserForm, team: e.target.value})} />
+                <input placeholder="Apartment" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editUserForm.room} onChange={e => setEditUserForm({...editUserForm, room: e.target.value})} />
+                <div className="flex gap-2 pt-2">
+                  <button onClick={saveAttendee} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save Member</button>
+                  <button onClick={() => setIsEditingAttendee(null)} className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {attendees.map(a => (
+               <div key={a.id} className="bg-white p-5 rounded-2xl border flex justify-between items-center shadow-sm">
+                  <div>
+                    <p className="font-bold text-slate-800">{a.name}</p>
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{a.team} • {a.room}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => { setIsEditingAttendee(a.id); setEditUserForm({ name: a.name, team: a.team, room: a.room }); }} className="text-slate-400 hover:text-blue-500 p-2"><Edit2 size={18}/></button>
+                    <button onClick={async () => await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendees', a.id))} className="text-red-300 hover:text-red-500 p-2"><Trash2 size={18}/></button>
+                  </div>
+               </div>
+            ))}
+          </div>
+        )}
+
+        {view === 'manageEvents' && (
+          <div className="space-y-4">
+             <button onClick={() => setView('admin')} className="flex items-center text-blue-600 font-bold mb-4"><ChevronLeft size={20}/> Back</button>
+             
+             {!isEditingEvent ? (
+               <button onClick={() => {
+                 setIsEditingEvent('new');
+                 const now = new Date();
+                 const inAnHour = new Date(now.getTime() + 60*60*1000);
+                 setEditEventForm({ 
+                   title: "", 
+                   timeLabel: "", 
+                   startTime: now.toISOString().slice(0,16), 
+                   endTime: inAnHour.toISOString().slice(0,16), 
+                   location: "" 
+                 });
+               }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center mb-4 shadow-lg"><Plus size={20} className="mr-2"/> New Schedule Item</button>
+             ) : (
+               <div className="bg-white p-6 rounded-[2rem] border-2 border-blue-100 space-y-3 mb-4 shadow-lg animate-in slide-in-from-top-4">
+                 <h3 className="font-black text-slate-800 mb-2">{isEditingEvent === 'new' ? 'Create New Event' : 'Edit Event'}</h3>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Event Title</label>
+                   <input placeholder="e.g. Secret Session" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.title} onChange={e => setEditEventForm({...editEventForm, title: e.target.value})} />
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Display Time (e.g. 7:00 PM)</label>
+                   <input placeholder="e.g. 7:00 PM" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.timeLabel} onChange={e => setEditEventForm({...editEventForm, timeLabel: e.target.value})} />
+                 </div>
+                 <div className="grid grid-cols-2 gap-3">
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Reveal Time</label>
+                     <input type="datetime-local" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.startTime} onChange={e => setEditEventForm({...editEventForm, startTime: e.target.value})} />
+                   </div>
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">End Date/Time</label>
+                     <input type="datetime-local" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.endTime} onChange={e => setEditEventForm({...editEventForm, endTime: e.target.value})} />
+                   </div>
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Location</label>
+                   <input placeholder="e.g. Main Cabin" className="w-full p-4 bg-slate-50 rounded-2xl border-transparent focus:border-blue-500 focus:outline-none border-2 transition-all font-medium" value={editEventForm.location} onChange={e => setEditEventForm({...editEventForm, location: e.target.value})} />
+                 </div>
+                 <div className="flex gap-2 pt-2">
+                   <button onClick={saveEvent} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg">Save Event</button>
+                   <button onClick={() => setIsEditingEvent(null)} className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">Cancel</button>
+                 </div>
+               </div>
+             )}
+
+             <div className="space-y-4">
+              <div className="flex items-center justify-between ml-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Event List ({schedule.length})</p>
+                <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase tracking-tighter">Sorted by Time</span>
+              </div>
+              
+              {schedule.map(event => (
+                <div key={event.id} className="bg-white p-6 rounded-[1.5rem] border shadow-sm space-y-3 relative overflow-hidden">
+                    {new Date(event.endTime) < currentTime && (
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-slate-100 text-[9px] font-bold text-slate-400 uppercase tracking-widest rounded-bl-lg">Expired</div>
+                    )}
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-blue-500"/>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{event.timeLabel || "Unlabeled"}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => { setIsEditingEvent(event.id); setEditEventForm({ ...event }); }} className="text-slate-400 hover:text-blue-500 p-2"><Edit2 size={16}/></button>
+                        <button onClick={() => deleteEvent(event.id)} className="text-red-300 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+                      </div>
+                    </div>
+                    <h3 className="font-black text-slate-800 text-lg leading-tight">{event.title}</h3>
+                    <div className="flex flex-col gap-1 mt-2">
+                      <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <MapPin size={12} className="mr-1 text-blue-400"/> {event.location}
+                      </div>
+                      <div className="flex items-center text-[9px] text-slate-400 font-medium">
+                        Reveal: {new Date(event.startTime).toLocaleString()}
+                      </div>
+                    </div>
+                </div>
+              ))}
+              {schedule.length === 0 && (
+                <div className="bg-dashed bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center">
+                   <p className="text-slate-400 font-medium italic">No events created yet.</p>
+                </div>
+              )}
+             </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[85%] max-w-[340px] bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-[2.5rem] p-2 flex justify-around items-center z-50">
+        <button onClick={() => setView('schedule')} className={`flex flex-col items-center py-4 rounded-[2rem] transition-all flex-1 ${view === 'schedule' ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}>
+          <Calendar size={22} strokeWidth={view === 'schedule' ? 3 : 2} />
+        </button>
+        <button onClick={() => setView('info')} className={`flex flex-col items-center py-4 rounded-[2rem] transition-all flex-1 ${(['info', 'directory'].includes(view)) ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}>
+          <Info size={22} strokeWidth={(['info', 'directory'].includes(view)) ? 3 : 2} />
+        </button>
+        {activeUser.role === 'admin' && (
+          <button onClick={() => setView('admin')} className={`flex flex-col items-center py-4 rounded-[2rem] transition-all flex-1 ${(['admin', 'editAttendees', 'manageEvents'].includes(view)) ? 'text-blue-600 bg-blue-50' : 'text-slate-400'}`}>
+            <ShieldCheck size={22} strokeWidth={3} />
+          </button>
+        )}
+      </nav>
+    </div>
+  );
+};
+
+export default App;
