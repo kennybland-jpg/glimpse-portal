@@ -69,7 +69,6 @@
                             <span id="display-apt" class="font-black text-slate-900">TBD</span>
                         </button>
                     </div>
-                    <p class="text-[9px] text-slate-400 font-bold mt-4 text-center uppercase tracking-tighter">Tap to see fellow members</p>
                 </div>
 
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
@@ -135,12 +134,21 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // CONFIG & INIT
         const ADMIN_PASS = 'RDS12admin';
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-demo-app';
-        
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "demo", projectId: "demo" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-production';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // Replace with your Firebase config if running purely external
+            apiKey: "AIzaSy...", 
+            authDomain: "your-app.firebaseapp.com",
+            projectId: "your-app",
+            storageBucket: "your-app.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -152,27 +160,39 @@
         let allMembers = [];
         let myProfile = null;
 
+        // AUTH HANDLER
         const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Error:", err);
             }
         };
 
-        onAuthStateChanged(auth, (u) => { user = u; });
+        onAuthStateChanged(auth, (u) => { 
+            user = u; 
+            if (u) {
+                console.log("Authenticated as:", u.uid);
+                loadSchedule(); 
+            }
+        });
         initAuth();
 
         function showToast(msg) {
             const t = document.getElementById('loading-toast');
             t.innerText = msg; t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2000);
+            setTimeout(() => t.style.display = 'none', 3000);
         }
 
         // --- Data Loading ---
         function loadSchedule() {
             if (!user) return;
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'events');
+            onSnapshot(colRef, (snap) => {
                 const events = snap.docs.map(d => d.data());
                 const feed = document.getElementById('schedule-feed');
                 feed.innerHTML = events.sort((a,b)=> (a.time||"").localeCompare(b.time||"")).map(e => `
@@ -182,13 +202,14 @@
                         <p class="text-sm text-slate-400 font-bold">${e.location || 'Venue'}</p>
                     </div>
                 `).join('') || '<p class="text-center text-slate-400 py-10 font-bold">No events scheduled.</p>';
-            });
+            }, (err) => console.error("Schedule Load Error:", err));
         }
 
         function syncMembers(currentUserName) {
             if (!user) return;
             const cleanName = currentUserName.trim().toUpperCase();
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'members');
+            onSnapshot(colRef, (snap) => {
                 allMembers = snap.docs.map(d => d.data());
                 myProfile = allMembers.find(m => m.name && m.name.toUpperCase() === cleanName);
                 
@@ -196,39 +217,46 @@
                     document.getElementById('display-tribe').innerText = myProfile.tribe || 'TBD';
                     document.getElementById('display-apt').innerText = myProfile.apartment || 'TBD';
                 }
-            });
+            }, (err) => console.error("Member Sync Error:", err));
         }
 
-        // --- Discovery Logic ---
-        function openDiscovery(type) {
-            const title = type === 'tribe' ? 'Tribe Members' : 'Roommates';
-            const value = type === 'tribe' ? myProfile?.tribe : myProfile?.apartment;
-            
-            if (!value || value === 'TBD') {
-                showToast("No assignment found yet.");
+        // --- Admin Ops ---
+        const saveEntry = async () => {
+            if (!user) {
+                showToast("Auth Error - Refresh Page");
                 return;
             }
 
-            document.getElementById('discovery-title').innerText = title;
-            document.getElementById('discovery-subtitle').innerText = `${value} Community`;
-            
-            const listEl = document.getElementById('discovery-list');
-            const filtered = allMembers.filter(m => (type === 'tribe' ? m.tribe : m.apartment) === value);
-            
-            listEl.innerHTML = filtered.map(m => `
-                <div class="bg-slate-50 p-6 rounded-2xl flex items-center gap-4 border border-slate-100">
-                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg border border-slate-100">👤</div>
-                    <div>
-                        <p class="font-black text-slate-900">${m.name}</p>
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${type === 'tribe' ? (m.apartment || 'No Apartment') : (m.tribe || 'No Tribe')}</p>
-                    </div>
-                </div>
-            `).join('');
+            const nameInput = document.getElementById('f-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
 
-            document.getElementById('discovery-modal').style.display = 'block';
-        }
+            showToast("Saving...");
 
-        // --- Admin Operations ---
+            const payload = { name };
+            if (currentMode === 'events') {
+                payload.time = document.getElementById('f-time').value;
+                payload.location = document.getElementById('f-location').value;
+            } else {
+                payload.tribe = document.getElementById('f-tribe').value;
+                payload.apartment = document.getElementById('f-apt').value;
+            }
+
+            try {
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', currentMode);
+                if (editingId) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, editingId), payload);
+                } else {
+                    await addDoc(colRef, { ...payload, createdAt: Date.now() });
+                }
+                resetForm();
+                showToast("Entry Saved!");
+            } catch (error) {
+                console.error("Firestore Error:", error);
+                showToast("Save Failed: " + error.message);
+            }
+        };
+
         const resetForm = () => {
             editingId = null;
             document.getElementById('edit-indicator').classList.add('hidden');
@@ -239,8 +267,10 @@
 
         window.deleteAdminItem = async (id) => {
             if (!confirm("Delete this entry?")) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
-            showToast("Deleted");
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
+                showToast("Deleted");
+            } catch (e) { showToast("Delete failed"); }
         };
 
         window.editAdminItem = (id, dataStr) => {
@@ -262,7 +292,8 @@
 
         const renderAdminList = () => {
             if (unsubscribeList) unsubscribeList();
-            unsubscribeList = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', currentMode), (snap) => {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', currentMode);
+            unsubscribeList = onSnapshot(colRef, (snap) => {
                 const listEl = document.getElementById('modal-list');
                 const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
@@ -281,31 +312,7 @@
                         </div>
                     `;
                 }).join('') || '<p class="text-center text-slate-300 py-4 text-xs font-bold">List is empty</p>';
-            });
-        };
-
-        document.getElementById('btn-save-item').onclick = async () => {
-            if (!user) return;
-            const name = document.getElementById('f-name').value;
-            if (!name) return;
-
-            const payload = { name };
-            if (currentMode === 'events') {
-                payload.time = document.getElementById('f-time').value;
-                payload.location = document.getElementById('f-location').value;
-            } else {
-                payload.tribe = document.getElementById('f-tribe').value;
-                payload.apartment = document.getElementById('f-apt').value;
-            }
-
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', currentMode);
-            if (editingId) {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, editingId), payload);
-            } else {
-                await addDoc(colRef, { ...payload, createdAt: Date.now() });
-            }
-            resetForm();
-            showToast("Saved Successfully");
+            }, (err) => console.error("Admin List Error:", err));
         };
 
         const openAdminModal = (mode) => {
@@ -342,6 +349,8 @@
             document.getElementById('app-view').style.display = 'block';
         };
 
+        document.getElementById('btn-save-item').onclick = saveEntry;
+        
         document.getElementById('card-tribe').onclick = () => openDiscovery('tribe');
         document.getElementById('card-apt').onclick = () => openDiscovery('apt');
         document.getElementById('btn-close-discovery').onclick = () => document.getElementById('discovery-modal').style.display = 'none';
@@ -360,6 +369,35 @@
                 document.querySelectorAll('.view-content').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
             };
         });
+
+        // --- Discovery Logic ---
+        function openDiscovery(type) {
+            const title = type === 'tribe' ? 'Tribe Members' : 'Roommates';
+            const value = type === 'tribe' ? myProfile?.tribe : myProfile?.apartment;
+            
+            if (!value || value === 'TBD') {
+                showToast("No assignment found yet.");
+                return;
+            }
+
+            document.getElementById('discovery-title').innerText = title;
+            document.getElementById('discovery-subtitle').innerText = `${value} Community`;
+            
+            const listEl = document.getElementById('discovery-list');
+            const filtered = allMembers.filter(m => (type === 'tribe' ? m.tribe : m.apartment) === value);
+            
+            listEl.innerHTML = filtered.map(m => `
+                <div class="bg-slate-50 p-6 rounded-2xl flex items-center gap-4 border border-slate-100">
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg border border-slate-100">👤</div>
+                    <div>
+                        <p class="font-black text-slate-900">${m.name}</p>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${type === 'tribe' ? (m.apartment || 'No Apartment') : (m.tribe || 'No Tribe')}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('discovery-modal').style.display = 'block';
+        }
     </script>
 </body>
 </html>
