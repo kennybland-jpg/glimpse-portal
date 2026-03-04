@@ -41,7 +41,7 @@
             box-sizing: border-box;
         }
 
-        /* State management via simple class */
+        /* The specific state change class */
         .show-login { transform: translateX(-50%); }
 
         .btn-press:active { transform: scale(0.96); }
@@ -69,10 +69,10 @@
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Preview</p>
                 
                 <div class="w-full space-y-3">
-                    <button onclick="handleNav('attendee')" class="btn-press w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg transition-all shadow-lg shadow-blue-500/20">
+                    <button id="btn-attendee" class="btn-press w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg transition-all shadow-lg shadow-blue-500/20">
                         Attendee Login
                     </button>
-                    <button onclick="handleNav('staff')" class="btn-press w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl font-bold transition-all">
+                    <button id="btn-staff" class="btn-press w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl font-bold transition-all">
                         Staff Portal
                     </button>
                 </div>
@@ -82,7 +82,7 @@
             <div class="screen">
                 <div class="flex items-center justify-between mb-8">
                     <h2 id="login-label" class="text-2xl font-black text-slate-900 tracking-tight">Login</h2>
-                    <button onclick="handleBack()" class="p-2 bg-slate-50 rounded-full text-slate-400">
+                    <button id="btn-back" class="p-2 bg-slate-50 rounded-full text-slate-400">
                         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
                     </button>
                 </div>
@@ -92,7 +92,7 @@
                         <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800" placeholder="Your Name" />
                         <p id="error-text" class="text-red-500 text-[10px] font-black mt-3 uppercase hidden">Invalid Passcode</p>
                     </div>
-                    <button onclick="attemptLogin()" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl transition-all">
+                    <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl transition-all">
                         Enter Portal
                     </button>
                 </div>
@@ -112,7 +112,6 @@
             <section>
                 <h3 class="text-slate-300 font-black text-xs uppercase tracking-widest mb-6">Your Weekend Schedule</h3>
                 <div id="schedule-feed" class="space-y-4">
-                    <!-- Feed items injected here -->
                     <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
                     <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
                 </div>
@@ -121,7 +120,7 @@
             <nav class="fixed bottom-8 left-0 right-0 px-8">
                 <div class="max-w-[280px] mx-auto bg-slate-900 rounded-full p-2 flex justify-between shadow-2xl">
                     <button class="w-12 h-12 flex items-center justify-center bg-blue-600 rounded-full text-white">🏠</button>
-                    <button onclick="location.reload()" class="w-12 h-12 flex items-center justify-center text-slate-500">🚪</button>
+                    <button id="btn-logout" class="w-12 h-12 flex items-center justify-center text-slate-500">🚪</button>
                 </div>
             </nav>
         </div>
@@ -132,49 +131,64 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global state
+        // State
         let currentMode = 'attendee';
+
+        // Elements
         const slider = document.getElementById('main-slider');
         const input = document.getElementById('user-input');
         const label = document.getElementById('login-label');
         const error = document.getElementById('error-text');
+        
+        const btnAttendee = document.getElementById('btn-attendee');
+        const btnStaff = document.getElementById('btn-staff');
+        const btnBack = document.getElementById('btn-back');
+        const btnEnter = document.getElementById('btn-enter');
+        const btnLogout = document.getElementById('btn-logout');
 
-        // Attach functions to window so they work in HTML onclick attributes
-        window.handleNav = (mode) => {
-            currentMode = mode;
-            label.innerText = mode === 'staff' ? 'Staff Portal' : 'Login';
-            input.placeholder = mode === 'staff' ? 'Passcode' : 'Full Name';
-            input.type = mode === 'staff' ? 'password' : 'text';
-            input.value = '';
-            error.classList.add('hidden');
+        // Event Listeners (The reliable way)
+        btnAttendee.addEventListener('click', () => {
+            currentMode = 'attendee';
+            label.innerText = 'Login';
+            input.placeholder = 'Full Name';
+            input.type = 'text';
             slider.classList.add('show-login');
-        };
+        });
 
-        window.handleBack = () => {
+        btnStaff.addEventListener('click', () => {
+            currentMode = 'staff';
+            label.innerText = 'Staff Portal';
+            input.placeholder = 'Passcode';
+            input.type = 'password';
+            slider.classList.add('show-login');
+        });
+
+        btnBack.addEventListener('click', () => {
             slider.classList.remove('show-login');
-        };
+            error.classList.add('hidden');
+        });
 
-        window.attemptLogin = async () => {
+        btnEnter.addEventListener('click', async () => {
             const val = input.value.trim();
             if(!val) return;
 
-            if(currentMode === 'staff') {
-                if(val !== 'RDS12admin') {
-                    error.classList.remove('hidden');
-                    return;
-                }
+            if(currentMode === 'staff' && val !== 'RDS12admin') {
+                error.classList.remove('hidden');
+                return;
             }
 
-            // Success Transition
-            document.getElementById('display-name').innerText = currentMode === 'staff' ? 'Staff' : val;
+            document.getElementById('display-name').innerText = currentMode === 'staff' ? 'Staff Member' : val;
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
 
-            // Start Firebase Content
-            initContent();
-        };
+            initFirebase();
+        });
 
-        async function initContent() {
+        btnLogout.addEventListener('click', () => {
+            location.reload();
+        });
+
+        async function initFirebase() {
             try {
                 const firebaseConfig = JSON.parse(__firebase_config);
                 const app = initializeApp(firebaseConfig);
@@ -189,10 +203,7 @@
                     const feed = document.getElementById('schedule-feed');
                     
                     if (events.length === 0) {
-                        feed.innerHTML = `
-                            <div class="p-8 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                                <p class="text-slate-400 font-bold text-sm">No events found yet.</p>
-                            </div>`;
+                        feed.innerHTML = `<p class="text-slate-400 text-center py-10 font-bold">Waiting for schedule updates...</p>`;
                         return;
                     }
 
@@ -202,14 +213,12 @@
                                 <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black text-blue-600 shadow-sm">${e.time}</span>
                                 <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">${e.location || 'RDS'}</span>
                             </div>
-                            <h4 class="text-lg font-black text-slate-900 leading-tight">${e.name}</h4>
+                            <h4 class="text-lg font-black text-slate-900">${e.name}</h4>
                         </div>
                     `).join('');
-                }, (err) => {
-                    console.error("Firestore error:", err);
                 });
-            } catch (e) {
-                console.error("Firebase init failed:", e);
+            } catch (err) {
+                console.error("Firebase startup failed:", err);
             }
         }
     </script>
