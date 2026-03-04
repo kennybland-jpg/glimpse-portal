@@ -58,6 +58,10 @@
         .view-content.active {
             display: block;
         }
+
+        .admin-widget {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
     </style>
 </head>
 <body>
@@ -78,7 +82,7 @@
                 <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl transition-all">
                     Access Portal
                 </button>
-                <p class="text-[10px] text-slate-400 font-medium">By entering, you agree to the event terms.</p>
+                <p class="text-[10px] text-slate-400 font-medium">Use passcode for staff access</p>
             </div>
         </div>
     </div>
@@ -97,59 +101,61 @@
                 <section>
                     <h3 class="text-slate-300 font-black text-xs uppercase tracking-widest mb-6">Your Weekend Schedule</h3>
                     <div id="schedule-feed" class="space-y-4">
-                        <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
-                        <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
+                        <div class="p-6 bg-slate-50 rounded-3xl animate-pulse h-24"></div>
+                        <div class="p-6 bg-slate-50 rounded-3xl animate-pulse h-24"></div>
                     </div>
                 </section>
             </div>
 
-            <!-- PROFILE VIEW -->
+            <!-- PROFILE VIEW (Now includes Admin Controls) -->
             <div id="view-profile" class="view-content">
                 <header class="mb-10 pt-8">
-                    <h1 class="text-4xl font-black text-slate-900">Your Profile</h1>
+                    <h1 class="text-4xl font-black text-slate-900">Account</h1>
                 </header>
-                <div class="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center">
-                    <div class="w-24 h-24 bg-slate-200 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">👤</div>
+                
+                <!-- Main User Card -->
+                <div class="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center mb-6">
+                    <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                     <p id="profile-role" class="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">Attendee</p>
-                    <div class="mt-8 pt-8 border-t border-slate-200">
-                        <button id="btn-logout" class="text-red-500 font-black text-sm uppercase tracking-widest">Logout Session</button>
-                    </div>
                 </div>
-            </div>
 
-            <!-- ADMIN VIEW (Staff Only) -->
-            <div id="view-admin" class="view-content">
-                <header class="mb-10 pt-8">
-                    <h1 class="text-4xl font-black text-slate-900">Admin Panel</h1>
-                </header>
-                <div class="space-y-4">
-                    <div class="bg-slate-900 p-6 rounded-[2rem] text-white">
-                        <h4 class="font-black mb-2">Real-time Controls</h4>
-                        <p class="text-slate-400 text-xs">Manage schedule items and event notifications from this portal.</p>
-                        <button class="mt-4 w-full py-3 bg-blue-600 rounded-xl font-bold text-sm">Push Notification</button>
-                    </div>
-                    <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-200">
-                        <h4 class="font-black text-slate-900 mb-2 text-sm">System Status</h4>
+                <!-- ADMIN ONLY WIDGET -->
+                <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-black text-sm uppercase tracking-widest opacity-80">Staff Control Center</h3>
                         <div class="flex items-center space-x-2">
-                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span class="text-xs font-bold text-slate-500 uppercase">Operational</span>
+                            <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="text-[9px] font-bold text-green-400 uppercase">Live</span>
                         </div>
                     </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
+                            <span class="text-2xl mb-2">👥</span>
+                            <span class="text-[11px] font-black uppercase tracking-tight text-center">Manage Members</span>
+                        </button>
+                        <button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
+                            <span class="text-2xl mb-2">🗓️</span>
+                            <span class="text-[11px] font-black uppercase tracking-tight text-center">Manage Events</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="px-4">
+                    <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-50 transition-colors">Logout Session</button>
                 </div>
             </div>
 
             <!-- BOTTOM NAVIGATION -->
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
-                <div id="nav-container" class="max-w-xs mx-auto bg-slate-900 rounded-full p-2 flex justify-between shadow-2xl">
+                <div id="nav-container" class="max-w-[200px] mx-auto bg-slate-900 rounded-full p-2 flex justify-around shadow-2xl">
                     <button data-view="schedule" class="nav-item active w-14 h-14 flex flex-col items-center justify-center rounded-full">
                         <span class="text-xl">📅</span>
                     </button>
                     <button data-view="profile" class="nav-item w-14 h-14 flex flex-col items-center justify-center rounded-full">
                         <span class="text-xl">👤</span>
                     </button>
-                    <!-- Admin button slot -->
-                    <div id="admin-nav-slot"></div>
                 </div>
             </nav>
         </div>
@@ -160,14 +166,11 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Elements
         const input = document.getElementById('user-input');
         const btnEnter = document.getElementById('btn-enter');
         const btnLogout = document.getElementById('btn-logout');
-
         const ADMIN_PASS = 'RDS12admin';
 
-        // Nav Handlers
         function setupNavigation() {
             const navItems = document.querySelectorAll('.nav-item');
             const views = document.querySelectorAll('.view-content');
@@ -190,19 +193,17 @@
             if(!val) return;
 
             const isAdmin = val === ADMIN_PASS;
-            const userName = isAdmin ? 'Admin' : val;
+            const userName = isAdmin ? 'Admin User' : val;
             
-            // UI Updates
+            // UI Setup
             document.getElementById('display-name').innerText = userName;
             document.getElementById('profile-name').innerText = userName;
             document.getElementById('profile-role').innerText = isAdmin ? 'Event Staff' : 'Attendee';
 
             if(isAdmin) {
-                document.getElementById('admin-nav-slot').innerHTML = `
-                    <button data-view="admin" class="nav-item w-14 h-14 flex flex-col items-center justify-center rounded-full">
-                        <span class="text-xl">🛠️</span>
-                    </button>
-                `;
+                document.getElementById('admin-controls').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-controls').classList.add('hidden');
             }
 
             document.getElementById('gateway-view').style.display = 'none';
@@ -212,7 +213,6 @@
             initFirebase();
         };
 
-        // Support 'Enter' key
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') btnEnter.click();
         });
@@ -243,7 +243,11 @@
                         const feed = document.getElementById('schedule-feed');
                         
                         if (events.length === 0) {
-                            feed.innerHTML = `<p class="text-slate-400 text-center py-10 font-bold">Waiting for schedule updates...</p>`;
+                            feed.innerHTML = `
+                                <div class="p-8 border-2 border-dashed border-slate-100 rounded-[2.5rem] text-center">
+                                    <p class="text-slate-400 text-sm font-bold">Schedule will appear here shortly.</p>
+                                </div>
+                            `;
                             return;
                         }
 
@@ -259,7 +263,7 @@
                     }, (err) => console.error("Firestore error:", err));
                 });
             } catch (err) {
-                console.warn("Firebase config not found or invalid - app will run in offline mode.");
+                console.warn("Offline mode active.");
             }
         }
     </script>
