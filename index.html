@@ -17,68 +17,107 @@
         .view-content.active { display: block; }
         .admin-widget { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
         #admin-modal { display: none; position: fixed; inset: 0; background: white; z-index: 200; overflow-y: auto; }
-        .input-field { width: 100%; background: #f1f5f9; border-radius: 1rem; padding: 1rem; font-weight: bold; border: 2px solid transparent; outline: none; }
+        .input-field { width: 100%; background: #f1f5f9; border-radius: 1rem; padding: 1rem; font-weight: bold; border: 2px solid transparent; outline: none; transition: all 0.2s; }
         .input-field:focus { border-color: #2563eb; background: white; }
-        #loading-toast { display: none; position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: #0f172a; color: white; padding: 1rem 2rem; border-radius: 1rem; font-weight: bold; font-size: 0.8rem; z-index: 300; }
+        #loading-toast { display: none; position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: #0f172a; color: white; padding: 1rem 2rem; border-radius: 1rem; font-weight: bold; font-size: 0.8rem; z-index: 300; pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <!-- GATEWAY -->
     <div id="gateway-view" class="glass-card">
         <div class="flex flex-col items-center text-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center shadow-xl text-2xl">✨</div>
             <h1 class="text-3xl font-black text-slate-900 tracking-tighter mb-1">Glimpse</h1>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Preview</p>
             <div class="w-full space-y-4">
-                <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center" placeholder="Enter your name" />
+                <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center uppercase" placeholder="Enter your name" />
                 <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">Access Portal</button>
             </div>
         </div>
     </div>
 
+    <!-- MAIN APP -->
     <div id="app-view">
         <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
+            
+            <!-- Schedule View -->
             <div id="view-schedule" class="view-content active">
-                <header class="mb-10 pt-8"><p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Welcome Back</p><h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1></header>
+                <header class="mb-10 pt-8">
+                    <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Welcome Back</p>
+                    <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
+                </header>
                 <div id="schedule-feed" class="space-y-4"></div>
             </div>
 
+            <!-- Profile/Account View -->
             <div id="view-profile" class="view-content">
                 <header class="mb-10 pt-8"><h1 class="text-4xl font-black text-slate-900">Account</h1></header>
-                <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6">
+                
+                <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100">
                     <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
+                    <p id="user-role-label" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">RDS Attendee</p>
                 </div>
+
+                <div id="community-hub" class="bg-slate-50 p-8 rounded-[2.5rem] mb-6 border border-slate-100">
+                    <h3 class="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-6">Community Hub</h3>
+                    <div class="space-y-3 text-left">
+                        <div class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm">
+                            <span class="text-[10px] font-black text-slate-400 uppercase">My Tribe</span>
+                            <span id="display-tribe" class="font-black text-blue-600">Pending...</span>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm">
+                            <span class="text-[10px] font-black text-slate-400 uppercase">Apartment</span>
+                            <span id="display-apt" class="font-black text-slate-900">TBD</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
                     <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
                     <div class="grid grid-cols-2 gap-3">
-                        <button id="btn-manage-members" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5"><span class="text-2xl mb-2">👥</span><span class="text-[11px] font-black uppercase">Members</span></button>
-                        <button id="btn-manage-events" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5"><span class="text-2xl mb-2">🗓️</span><span class="text-[11px] font-black uppercase">Events</span></button>
+                        <button id="btn-manage-members" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">👥</span><span class="text-[11px] font-black uppercase">Members</span></button>
+                        <button id="btn-manage-events" class="flex flex-col items-center justify-center p-4 bg-white/10 rounded-2xl aspect-square border border-white/5 btn-press transition-all"><span class="text-2xl mb-2">🗓️</span><span class="text-[11px] font-black uppercase">Events</span></button>
                     </div>
                 </div>
+
                 <button id="btn-logout" class="w-full py-4 bg-slate-100 text-red-500 rounded-2xl font-black text-sm uppercase">Logout Session</button>
             </div>
 
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
                 <div class="max-w-[200px] mx-auto bg-slate-900 rounded-full p-2 flex justify-around shadow-2xl">
-                    <button data-view="schedule" class="nav-item active w-14 h-14 flex items-center justify-center rounded-full">📅</button>
-                    <button data-view="profile" class="nav-item w-14 h-14 flex items-center justify-center rounded-full">👤</button>
+                    <button data-view="schedule" class="nav-item active w-14 h-14 flex items-center justify-center rounded-full text-xl">📅</button>
+                    <button data-view="profile" class="nav-item w-14 h-14 flex items-center justify-center rounded-full text-xl">👤</button>
                 </div>
             </nav>
         </div>
     </div>
 
+    <!-- Admin Modal -->
     <div id="admin-modal">
         <div class="max-w-md mx-auto p-8">
-            <header class="flex items-center justify-between mb-10">
-                <h2 id="modal-title" class="text-3xl font-black text-slate-900">Manage</h2>
-                <button id="btn-close-modal" class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">✕</button>
+            <header class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 id="modal-title" class="text-3xl font-black text-slate-900 leading-tight">Manage</h2>
+                    <p id="edit-indicator" class="text-[10px] font-bold text-blue-600 uppercase hidden">Editing Existing Entry</p>
+                </div>
+                <button id="btn-close-modal" class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold">✕</button>
             </header>
-            <div id="modal-form" class="bg-slate-50 p-6 rounded-[2rem] mb-8">
-                <div id="form-fields" class="space-y-4"></div>
-                <button id="btn-save-item" class="w-full mt-6 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">Save Entry</button>
+            
+            <div id="modal-form" class="bg-slate-50 p-6 rounded-[2rem] mb-8 border border-slate-100">
+                <div id="form-fields" class="space-y-3"></div>
+                <div class="flex gap-2 mt-6">
+                    <button id="btn-save-item" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100">Save Entry</button>
+                    <button id="btn-cancel-edit" class="hidden px-6 py-4 bg-slate-200 text-slate-600 rounded-2xl font-black">Cancel</button>
+                </div>
             </div>
-            <div id="modal-list" class="space-y-3"></div>
+
+            <div class="mb-4 flex justify-between items-center">
+                <h3 class="font-black text-xs uppercase tracking-widest text-slate-400">Current List</h3>
+                <span class="text-[10px] font-bold text-slate-300">Tap to Edit</span>
+            </div>
+            <div id="modal-list" class="space-y-3 pb-12"></div>
         </div>
     </div>
 
@@ -87,7 +126,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, deleteDoc, addDoc, updateDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const ADMIN_PASS = 'RDS12admin';
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
@@ -98,24 +137,20 @@
         const db = getFirestore(app);
 
         let user = null;
+        let loggedInName = '';
         let currentMode = 'events';
+        let editingId = null;
 
-        // Background Auth - Rule 3
         const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (e) { console.error("Auth fail", e); }
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
         };
         initAuth();
 
-        onAuthStateChanged(auth, (u) => {
-            user = u;
-            if (u) setupRealtimeListeners();
-        });
+        onAuthStateChanged(auth, (u) => { user = u; });
 
         function showToast(msg) {
             const t = document.getElementById('loading-toast');
@@ -123,75 +158,163 @@
             setTimeout(() => t.style.display = 'none', 2000);
         }
 
-        function setupRealtimeListeners() {
+        // Logic to sync user data
+        async function syncMemberSession(name) {
             if (!user) return;
-            const eventsCol = collection(db, 'artifacts', appId, 'public', 'data', 'events');
-            onSnapshot(eventsCol, (snap) => {
+            const cleanName = name.trim().toUpperCase();
+            if (cleanName === ADMIN_PASS.toUpperCase()) return;
+
+            // Real-time listener for THIS specific user
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
+                const members = snap.docs.map(d => d.data());
+                const myData = members.find(m => m.name.toUpperCase() === cleanName);
+                
+                if (myData) {
+                    document.getElementById('display-tribe').innerText = myData.tribe || 'Pending...';
+                    document.getElementById('display-apt').innerText = myData.apartment || 'TBD';
+                } else {
+                    // Auto-create member record if it doesn't exist
+                    addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), {
+                        name: cleanName,
+                        tribe: 'Assigning...',
+                        apartment: 'TBD'
+                    });
+                }
+            }, (err) => console.error("Sync Error", err));
+        }
+
+        function setupGlobalListeners() {
+            // Schedule Feed
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
                 const events = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 const feed = document.getElementById('schedule-feed');
                 feed.innerHTML = events.sort((a,b)=> (a.time||"").localeCompare(b.time||"")).map(e => `
-                    <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black text-blue-600 shadow-sm">${e.time || 'TBD'}</span>
-                        </div>
-                        <h4 class="text-lg font-black text-slate-900">${e.name}</h4>
-                        <p class="text-xs text-slate-400 font-bold">${e.location || ''}</p>
+                    <div class="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                        <span class="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-wider">${e.time || 'TBD'}</span>
+                        <h4 class="text-xl font-black text-slate-900 mt-3 mb-1">${e.name}</h4>
+                        <p class="text-sm text-slate-400 font-bold">${e.location || 'Venue'}</p>
                     </div>
                 `).join('');
-            }, (err) => console.error("Snapshot error", err));
+            }, (err) => console.error(err));
         }
 
-        document.getElementById('btn-enter').onclick = () => {
+        document.getElementById('btn-enter').onclick = async () => {
             const val = document.getElementById('user-input').value.trim();
-            if (!val) return;
-            document.getElementById('display-name').innerText = val;
-            document.getElementById('profile-name').innerText = val;
-            if (val === ADMIN_PASS) document.getElementById('admin-controls').classList.remove('hidden');
+            if (!val || !user) return;
+            
+            loggedInName = val;
+            const isAdmin = (val.toUpperCase() === ADMIN_PASS.toUpperCase());
+            
+            document.getElementById('display-name').innerText = isAdmin ? "Administrator" : val;
+            document.getElementById('profile-name').innerText = isAdmin ? "Administrator" : val;
+            
+            if (isAdmin) {
+                document.getElementById('admin-controls').classList.remove('hidden');
+                document.getElementById('community-hub').classList.add('hidden');
+                document.getElementById('user-role-label').innerText = "System Architect";
+            } else {
+                document.getElementById('admin-controls').classList.add('hidden');
+                document.getElementById('community-hub').classList.remove('hidden');
+                document.getElementById('user-role-label').innerText = "RDS Attendee";
+                await syncMemberSession(val);
+            }
+
+            setupGlobalListeners();
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
         };
 
+        const resetForm = () => {
+            editingId = null;
+            document.getElementById('edit-indicator').classList.add('hidden');
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+            document.getElementById('btn-save-item').innerText = "Save Entry";
+            document.querySelectorAll('.input-field').forEach(i => i.value = '');
+        };
+
         const openModal = (mode) => {
-            if (!user) { showToast("Connecting to server..."); return; }
+            if (!user) return;
             currentMode = mode;
+            resetForm();
             document.getElementById('admin-modal').style.display = 'block';
             document.getElementById('modal-title').innerText = mode === 'events' ? 'Events' : 'Members';
+            
             const fields = document.getElementById('form-fields');
             fields.innerHTML = mode === 'events' 
-                ? `<input id="f-name" class="input-field" placeholder="Event Name"><input id="f-time" class="input-field" placeholder="Time"><input id="f-location" class="input-field" placeholder="Location">`
-                : `<input id="f-name" class="input-field" placeholder="Full Name"><input id="f-tribe" class="input-field" placeholder="Tribe">`;
+                ? `<input id="f-name" class="input-field" placeholder="Event Name">
+                   <input id="f-time" class="input-field" placeholder="Time (e.g. 14:00)">
+                   <input id="f-location" class="input-field" placeholder="Location">`
+                : `<input id="f-name" class="input-field" placeholder="Full Name">
+                   <input id="f-tribe" class="input-field" placeholder="Tribe">
+                   <input id="f-apt" class="input-field" placeholder="Apartment">`;
             
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', mode), (snap) => {
                 const items = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 document.getElementById('modal-list').innerHTML = items.map(i => `
-                    <div class="bg-slate-50 p-4 rounded-xl flex justify-between items-center">
-                        <span class="font-bold text-sm">${i.name}</span>
-                        <button onclick="window.delItem('${i.id}')" class="text-red-500 font-black px-2">✕</button>
+                    <div class="bg-slate-50 p-5 rounded-2xl flex justify-between items-center border border-slate-100 transition-all active:scale-[0.98]" 
+                         onclick="window.loadItem('${i.id}', '${encodeURIComponent(JSON.stringify(i))}')">
+                        <div class="flex-1 cursor-pointer">
+                            <p class="font-black text-slate-900 uppercase">${i.name}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">
+                                ${mode === 'events' ? (i.time || 'No Time') : `Tribe: ${i.tribe || '??'} • Apt: ${i.apartment || '??'}`}
+                            </p>
+                        </div>
+                        <button onclick="event.stopPropagation(); window.delItem('${i.id}')" class="w-10 h-10 bg-white shadow-sm text-red-500 rounded-xl font-black ml-4">✕</button>
                     </div>
                 `).join('');
-            });
+            }, (err) => console.error(err));
+        };
+
+        window.loadItem = (id, dataStr) => {
+            const data = JSON.parse(decodeURIComponent(dataStr));
+            editingId = id;
+            document.getElementById('edit-indicator').classList.remove('hidden');
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+            document.getElementById('btn-save-item').innerText = "Update Entry";
+            
+            document.getElementById('f-name').value = data.name || '';
+            if (currentMode === 'events') {
+                document.getElementById('f-time').value = data.time || '';
+                document.getElementById('f-location').value = data.location || '';
+            } else {
+                document.getElementById('f-tribe').value = data.tribe || '';
+                document.getElementById('f-apt').value = data.apartment || '';
+            }
+            document.getElementById('modal-form').scrollIntoView({ behavior: 'smooth' });
         };
 
         window.delItem = async (id) => {
-            if (!user) return;
+            if (!user || !confirm("Delete item?")) return;
             await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, id));
-            showToast("Deleted");
+            showToast("Removed");
+            if (editingId === id) resetForm();
         };
 
         document.getElementById('btn-save-item').onclick = async () => {
             if (!user) return;
-            const data = { name: document.getElementById('f-name').value };
+            const name = document.getElementById('f-name').value.trim();
+            if (!name) return;
+
+            const data = { name: name.toUpperCase() };
             if (currentMode === 'events') {
-                data.time = document.getElementById('f-time').value;
-                data.location = document.getElementById('f-location').value;
+                data.time = document.getElementById('f-time').value.trim();
+                data.location = document.getElementById('f-location').value.trim();
             } else {
-                data.tribe = document.getElementById('f-tribe').value;
+                data.tribe = document.getElementById('f-tribe').value.trim();
+                data.apartment = document.getElementById('f-apt').value.trim();
             }
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', currentMode), data);
-            showToast("Saved");
-            document.querySelectorAll('.input-field').forEach(i => i.value = '');
+
+            if (editingId) {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', currentMode, editingId), data);
+                showToast("Updated");
+            } else {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', currentMode), data);
+                showToast("Added");
+            }
+            resetForm();
         };
 
+        document.getElementById('btn-cancel-edit').onclick = resetForm;
         document.getElementById('btn-manage-events').onclick = () => openModal('events');
         document.getElementById('btn-manage-members').onclick = () => openModal('members');
         document.getElementById('btn-close-modal').onclick = () => document.getElementById('admin-modal').style.display = 'none';
