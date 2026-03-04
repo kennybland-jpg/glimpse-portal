@@ -6,7 +6,7 @@
     <title>Glimpse 2026 Portal</title>
     <!-- 1. Tailwind for Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. React and Babel (Allows the browser to run JSX) -->
+    <!-- 2. React and Babel -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -25,8 +25,11 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
         
-        // Lucide Icon Component Wrapper
+        // Lucide Icon Component Wrapper with safety check
         const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
+            // Check if lucide exists globally before trying to access the icon
+            if (typeof lucide === 'undefined') return <div style={{width: size, height: size}} className={className} />;
+            
             const IconComponent = lucide[name];
             return IconComponent ? <IconComponent size={size} className={className} strokeWidth={strokeWidth} /> : null;
         };
@@ -35,16 +38,30 @@
             const [view, setView] = useState('schedule');
             const [appUser, setAppUser] = useState(null);
             const [loginInput, setLoginInput] = useState("");
+            const [isReady, setIsReady] = useState(false);
 
-            // Mock Data (Since Firebase needs your specific keys to run live)
+            // Wait for icons to be available
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    if (typeof lucide !== 'undefined') {
+                        setIsReady(true);
+                        clearInterval(timer);
+                    }
+                }, 100);
+                return () => clearInterval(timer);
+            }, []);
+
+            // Mock Data
             const [schedule] = useState([
                 { id: 1, title: "Welcome Orientation", timeLabel: "5:00 PM", location: "Main Hall", startTime: new Date().toISOString(), endTime: new Date(Date.now() + 3600000).toISOString() },
                 { id: 2, title: "Dinner & Mixers", timeLabel: "6:30 PM", location: "Dining Common", startTime: new Date().toISOString(), endTime: new Date(Date.now() + 7200000).toISOString() }
             ]);
 
+            if (!isReady) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
+
             if (!appUser) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+                    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-slate-900">
                         <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-10 text-center z-10">
                             <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-lg">
                                 <Icon name="Sparkles" className="text-white" size={40} />
@@ -55,6 +72,7 @@
                                 type="text" 
                                 placeholder="Enter Name"
                                 className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 mb-4 outline-none transition-all"
+                                value={loginInput}
                                 onChange={(e) => setLoginInput(e.target.value)}
                             />
                             <button 
