@@ -4,139 +4,519 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Glimpse 2026 Portal</title>
-    <!-- 1. Tailwind for Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. React and Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- 3. Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .hidden-view { display: none !important; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .event-card { animation: slideUp 0.3s ease-out forwards; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .locked-card { filter: grayscale(1); opacity: 0.7; }
+
+        .tab-content { transition: opacity 0.2s ease-in-out; }
+        
+        /* Interactive List Item Animation */
+        .member-item { animation: slideUp 0.2s ease-out forwards; }
     </style>
 </head>
-<body class="bg-slate-900">
-    <div id="root"></div>
+<body class="bg-slate-900 min-h-screen text-slate-900">
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        
-        // Lucide Icon Component Wrapper with safety check
-        const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
-            // Check if lucide exists globally before trying to access the icon
-            if (typeof lucide === 'undefined') return <div style={{width: size, height: size}} className={className} />;
+    <!-- LANDING VIEW -->
+    <div id="landing-view" class="min-h-screen flex items-center justify-center p-6">
+        <div class="w-full max-w-sm glass-card rounded-[2.5rem] shadow-2xl p-10 text-center">
+            <div class="w-20 h-20 bg-blue-600 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-lg text-4xl">✨</div>
+            <h1 class="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimpse 2026</h1>
+            <p class="text-slate-500 mb-10 font-medium italic">RDS Preview Weekend</p>
+            <div class="space-y-4">
+                <button onclick="showLogin('attendee')" class="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-95">Attendee Login</button>
+                <button onclick="showLogin('admin')" class="w-full py-5 border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95">Staff Portal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden-view">
+        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modal-title" class="font-black text-slate-800 text-lg">Login</h3>
+                <button onclick="hideModal()" class="p-2 bg-slate-50 rounded-full text-slate-400">✕</button>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label id="input-label" class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Your Name</label>
+                    <input id="login-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none transition-all font-medium" />
+                    <p id="error-msg" class="text-red-500 text-xs font-bold mt-2 ml-1 hidden-view">Incorrect Password</p>
+                </div>
+                <button onclick="processLogin()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP VIEW -->
+    <div id="app-view" class="min-h-screen bg-white max-w-md mx-auto shadow-2xl relative flex flex-col hidden-view">
+        <header class="bg-white px-8 pt-14 pb-4 sticky top-0 z-10">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 id="view-indicator" class="text-[11px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Portal</h1>
+                    <p class="text-3xl font-black text-slate-900 tracking-tight">Hi, <span id="user-display-name">Guest</span></p>
+                </div>
+                <div class="text-right">
+                    <p id="current-time-display" class="text-[10px] font-bold text-slate-400 tabular-nums">00:00:00</p>
+                    <button onclick="location.reload()" class="mt-1 text-slate-300 hover:text-red-500 transition-colors text-[10px] font-bold uppercase tracking-wider">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content" class="flex-1 px-6 pb-32 overflow-y-auto custom-scroll">
+            <!-- VIEW: SCHEDULE -->
+            <div id="view-schedule" class="tab-content space-y-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-black text-slate-800">Your Weekend</h2>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Updates</span>
+                </div>
+                <div id="events-list" class="space-y-4">
+                    <div class="text-center py-10 text-slate-400 font-medium">Syncing schedule...</div>
+                </div>
+            </div>
+
+            <!-- VIEW: INFO (Personal Details) -->
+            <div id="view-info" class="tab-content hidden-view space-y-4 pt-4">
+                <h2 class="text-xl font-black text-slate-800">My Assignment</h2>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="showTribeList()" class="bg-blue-600 text-left p-6 rounded-[2rem] shadow-lg shadow-blue-200 active:scale-95 transition-all group">
+                        <p class="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">My Tribe</p>
+                        <p id="info-tribe" class="text-xl font-black text-white">—</p>
+                        <div class="mt-4 flex items-center text-[10px] font-bold text-blue-100 uppercase">
+                            <span>View All</span>
+                            <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                        </div>
+                    </button>
+
+                    <button onclick="showApartmentList()" class="bg-slate-900 text-left p-6 rounded-[2rem] shadow-lg shadow-slate-200 active:scale-95 transition-all group">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Apartment</p>
+                        <p id="info-apartment" class="text-xl font-black text-white">—</p>
+                        <div class="mt-4 flex items-center text-[10px] font-bold text-slate-400 uppercase">
+                            <span>View Mates</span>
+                            <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- DYNAMIC LIST CONTAINER -->
+                <div id="info-list-container" class="mt-6 space-y-4 hidden-view">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <h3 id="list-title" class="text-xs font-black text-slate-400 uppercase tracking-widest">Tribe Members</h3>
+                        <button onclick="closeInfoList()" class="text-[10px] font-bold text-blue-600 uppercase">Clear</button>
+                    </div>
+                    <div id="info-list-results" class="space-y-2">
+                        <!-- Members inject here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: ADMIN -->
+            <div id="view-admin" class="tab-content hidden-view space-y-8">
+                <section>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-black text-slate-800">Manage Events</h2>
+                        <button onclick="window.openEditor('event')" class="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg">+ Add Event</button>
+                    </div>
+                    <div id="admin-events-list" class="space-y-2"></div>
+                </section>
+
+                <section>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-black text-slate-800">Manage Members</h2>
+                        <button onclick="window.openEditor('member')" class="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg">+ Add Member</button>
+                    </div>
+                    <div id="admin-members-list" class="space-y-2"></div>
+                </section>
+            </div>
+        </main>
+
+        <nav id="bottom-nav" class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-[360px] bg-white/90 backdrop-blur-xl border border-slate-100 shadow-2xl rounded-[2.5rem] p-2 flex justify-around items-center z-20">
+            <button onclick="switchTab('schedule')" id="nav-schedule" class="p-4 rounded-[2rem] flex-1 flex flex-col items-center bg-blue-50 text-blue-600 transition-all">
+                <span class="text-lg">📅</span>
+                <span class="text-[9px] font-bold uppercase mt-1">Schedule</span>
+            </button>
+            <button onclick="switchTab('info')" id="nav-info" class="p-4 rounded-[2rem] flex-1 flex flex-col items-center text-slate-400 transition-all">
+                <span class="text-lg">👤</span>
+                <span class="text-[9px] font-bold uppercase mt-1">My Info</span>
+            </button>
+            <button onclick="switchTab('admin')" id="nav-admin" class="p-4 rounded-[2rem] flex-1 flex flex-col items-center text-slate-400 hidden-view transition-all">
+                <span class="text-lg">🛠️</span>
+                <span class="text-[9px] font-bold uppercase mt-1">Admin</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- DATA EDITOR MODAL -->
+    <div id="editor-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end justify-center hidden-view">
+        <div class="bg-white w-full max-w-md rounded-t-[3rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-8">
+                <h3 id="editor-title" class="font-black text-2xl text-slate-900">Edit Details</h3>
+                <button onclick="window.closeEditor()" class="p-3 bg-slate-100 rounded-full text-slate-500">✕</button>
+            </div>
             
-            const IconComponent = lucide[name];
-            return IconComponent ? <IconComponent size={size} className={className} strokeWidth={strokeWidth} /> : null;
+            <form id="editor-form" class="space-y-5">
+                <input type="hidden" id="edit-id">
+                <div id="form-fields" class="space-y-5"></div>
+                <div class="pt-6 space-y-3">
+                    <button type="submit" id="save-btn" class="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl">Save Changes</button>
+                    <button type="button" id="delete-btn" class="w-full py-4 text-red-500 font-bold hover:bg-red-50 rounded-2xl transition-colors">Delete Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
+
+        let user = null;
+        let isAdmin = false;
+        let userName = '';
+        let currentEditingType = null;
+        let allEvents = [];
+        let allMembers = [];
+        let lastRenderedEventCount = -1;
+
+        window.showLogin = (mode) => {
+            const modal = document.getElementById('login-modal');
+            const input = document.getElementById('login-input');
+            modal.setAttribute('data-mode', mode);
+            input.value = '';
+            document.getElementById('modal-title').innerText = mode === 'admin' ? 'Staff Access' : 'Attendee';
+            input.type = mode === 'admin' ? 'password' : 'text';
+            input.placeholder = mode === 'admin' ? '••••••••' : 'Your First Name';
+            modal.classList.remove('hidden-view');
         };
 
-        const App = () => {
-            const [view, setView] = useState('schedule');
-            const [appUser, setAppUser] = useState(null);
-            const [loginInput, setLoginInput] = useState("");
-            const [isReady, setIsReady] = useState(false);
+        window.hideModal = () => document.getElementById('login-modal').classList.add('hidden-view');
 
-            // Wait for icons to be available
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    if (typeof lucide !== 'undefined') {
-                        setIsReady(true);
-                        clearInterval(timer);
-                    }
-                }, 100);
-                return () => clearInterval(timer);
-            }, []);
-
-            // Mock Data
-            const [schedule] = useState([
-                { id: 1, title: "Welcome Orientation", timeLabel: "5:00 PM", location: "Main Hall", startTime: new Date().toISOString(), endTime: new Date(Date.now() + 3600000).toISOString() },
-                { id: 2, title: "Dinner & Mixers", timeLabel: "6:30 PM", location: "Dining Common", startTime: new Date().toISOString(), endTime: new Date(Date.now() + 7200000).toISOString() }
-            ]);
-
-            if (!isReady) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
-
-            if (!appUser) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-slate-900">
-                        <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl p-10 text-center z-10">
-                            <div className="w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-lg">
-                                <Icon name="Sparkles" className="text-white" size={40} />
-                            </div>
-                            <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">Glimpse 2026</h1>
-                            <p className="text-slate-500 mb-10 font-medium">RDS Preview Weekend</p>
-                            <input 
-                                type="text" 
-                                placeholder="Enter Name"
-                                className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 mb-4 outline-none transition-all"
-                                value={loginInput}
-                                onChange={(e) => setLoginInput(e.target.value)}
-                            />
-                            <button 
-                                onClick={() => setAppUser({ name: loginInput || "Guest", role: 'attendee', team: 'Blue Tribe', room: 'Apt 4B' })}
-                                className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-95"
-                            >
-                                Get Started
-                            </button>
-                        </div>
-                    </div>
-                );
+        window.processLogin = async () => {
+            const mode = document.getElementById('login-modal').getAttribute('data-mode');
+            const val = document.getElementById('login-input').value;
+            if (!val) return;
+            
+            if (mode === 'admin' && val !== 'RDS12admin') {
+                document.getElementById('error-msg').classList.remove('hidden-view');
+                return;
             }
 
-            return (
-                <div className="min-h-screen bg-slate-50 pb-28 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden">
-                    <header className="bg-white border-b border-slate-100 px-8 pt-14 pb-8">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h1 className="text-[11px] font-black text-blue-600 tracking-widest uppercase mb-1">Live Portal</h1>
-                                <p className="text-3xl font-black text-slate-900 tracking-tight">Glimpse</p>
-                            </div>
-                            <button onClick={() => setAppUser(null)} className="p-3 bg-slate-50 rounded-2xl text-slate-400">
-                                <Icon name="LogOut" />
-                            </button>
-                        </div>
-                    </header>
+            isAdmin = (mode === 'admin');
+            userName = val;
+            
+            if (!auth.currentUser) {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            }
 
-                    <main className="flex-1 px-6 py-6 overflow-y-auto">
-                        {view === 'schedule' ? (
-                            <div className="space-y-4">
-                                <h2 className="text-xl font-black text-slate-800 mb-4">Schedule</h2>
-                                {schedule.map(event => (
-                                    <div key={event.id} className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 shadow-sm">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">{event.timeLabel}</span>
-                                        <h3 className="text-lg font-black text-slate-800 mt-2">{event.title}</h3>
-                                        <div className="flex items-center text-slate-500 text-sm mt-2">
-                                            <Icon name="MapPin" size={14} className="mr-2 text-blue-500" />
-                                            {event.location}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-20">
-                                <Icon name="Info" size={48} className="mx-auto text-slate-200 mb-4" />
-                                <p className="text-slate-400 font-bold">Attendee Info coming soon!</p>
-                            </div>
-                        )}
-                    </main>
-
-                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[85%] max-w-[340px] bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-[2.5rem] p-2 flex justify-around items-center">
-                        <button onClick={() => setView('schedule')} className={`p-4 rounded-[2rem] flex-1 flex justify-center ${view === 'schedule' ? 'bg-blue-50 text-blue-600' : 'text-slate-400'}`}>
-                            <Icon name="Calendar" strokeWidth={3} />
-                        </button>
-                        <button onClick={() => setView('info')} className={`p-4 rounded-[2rem] flex-1 flex justify-center ${view === 'info' ? 'bg-blue-50 text-blue-600' : 'text-slate-400'}`}>
-                            <Icon name="Info" strokeWidth={3} />
-                        </button>
-                    </nav>
-                </div>
-            );
+            document.getElementById('user-display-name').innerText = isAdmin ? 'Staff' : userName;
+            document.getElementById('landing-view').classList.add('hidden-view');
+            document.getElementById('login-modal').classList.add('hidden-view');
+            document.getElementById('app-view').classList.remove('hidden-view');
+            
+            if (isAdmin) {
+                document.getElementById('nav-admin').classList.remove('hidden-view');
+                document.getElementById('nav-info').classList.add('hidden-view');
+            } else {
+                updatePersonalInfo();
+            }
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        window.switchTab = (tab) => {
+            const tabs = ['schedule', 'info', 'admin'];
+            tabs.forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const nav = document.getElementById(`nav-${t}`);
+                if (view) view.classList.toggle('hidden-view', t !== tab);
+                if (nav) {
+                    nav.classList.toggle('bg-blue-50', t === tab);
+                    nav.classList.toggle('text-blue-600', t === tab);
+                    nav.classList.toggle('text-slate-400', t !== tab);
+                }
+            });
+            if (tab === 'info') {
+                updatePersonalInfo();
+                closeInfoList();
+            }
+        };
+
+        function updatePersonalInfo() {
+            if (isAdmin) return;
+            const member = allMembers.find(m => m.name.toLowerCase() === userName.toLowerCase());
+            if (member) {
+                document.getElementById('info-tribe').innerText = member.tribe || 'Unassigned';
+                document.getElementById('info-apartment').innerText = member.apartment || '—';
+            } else {
+                document.getElementById('info-tribe').innerText = 'Not Found';
+                document.getElementById('info-apartment').innerText = '—';
+            }
+        }
+
+        window.showTribeList = () => {
+            const currentUser = allMembers.find(m => m.name.toLowerCase() === userName.toLowerCase());
+            if (!currentUser || !currentUser.tribe) return;
+            
+            const results = allMembers.filter(m => m.tribe === currentUser.tribe);
+            document.getElementById('list-title').innerText = `${currentUser.tribe} Tribe`;
+            renderFilteredList(results);
+        };
+
+        window.showApartmentList = () => {
+            const currentUser = allMembers.find(m => m.name.toLowerCase() === userName.toLowerCase());
+            if (!currentUser || !currentUser.apartment) return;
+
+            const results = allMembers.filter(m => m.apartment === currentUser.apartment);
+            document.getElementById('list-title').innerText = `Apartment ${currentUser.apartment}`;
+            renderFilteredList(results);
+        };
+
+        function renderFilteredList(members) {
+            const container = document.getElementById('info-list-container');
+            const resultsDiv = document.getElementById('info-list-results');
+            
+            container.classList.remove('hidden-view');
+            
+            resultsDiv.innerHTML = members.map(m => `
+                <div class="member-item flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                    <span class="font-bold text-slate-800">${m.name}</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${m.tribe}</span>
+                </div>
+            `).join('');
+
+            // Auto-scroll to view the list
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        window.closeInfoList = () => {
+            document.getElementById('info-list-container').classList.add('hidden-view');
+        };
+
+        function parseTime(timeStr) {
+            if (!timeStr) return new Date(0);
+            try {
+                const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                if (!parts) return new Date(0);
+                let hours = parseInt(parts[1], 10);
+                const minutes = parseInt(parts[2], 10);
+                const ampm = parts[3].toUpperCase();
+                if (ampm === 'PM' && hours < 12) hours += 12;
+                if (ampm === 'AM' && hours === 12) hours = 0;
+                const d = new Date();
+                d.setHours(hours, minutes, 0, 0);
+                return d;
+            } catch(e) { return new Date(0); }
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            const timer = document.getElementById('current-time-display');
+            if (timer) timer.innerText = now.toLocaleTimeString([], { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            checkEventValidity(now);
+        }, 1000);
+
+        function checkEventValidity(now) {
+            if (allEvents.length === 0) return;
+            const validCount = allEvents.filter(e => now < parseTime(e.endTime)).length;
+            if (validCount !== lastRenderedEventCount) {
+                renderEvents(allEvents);
+            }
+        }
+
+        function setupDataSync() {
+            if (!user) return;
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
+                allEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderEvents(allEvents);
+                if (isAdmin) renderAdminEvents(allEvents);
+            });
+
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snap) => {
+                allMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (!isAdmin) updatePersonalInfo();
+                if (isAdmin) renderAdminMembers(allMembers);
+            });
+        }
+
+        function renderEvents(events) {
+            const list = document.getElementById('events-list');
+            const now = new Date();
+            
+            const activeEvents = events.filter(e => {
+                const end = parseTime(e.endTime);
+                return now < end;
+            }).sort((a,b) => parseTime(a.time) - parseTime(b.time));
+
+            lastRenderedEventCount = activeEvents.length;
+
+            if (activeEvents.length === 0) {
+                list.innerHTML = `<div class="py-10 text-slate-400 text-center">Nothing scheduled right now.</div>`;
+                return;
+            }
+
+            const html = activeEvents.map(e => {
+                const reveal = parseTime(e.revealTime);
+                const isLocked = now < reveal;
+                return `
+                    <div class="event-card bg-white border-2 border-slate-50 rounded-[2rem] p-6 shadow-sm relative overflow-hidden ${isLocked ? 'locked-card' : ''}">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest ${isLocked ? 'text-slate-400 bg-slate-100' : 'text-blue-600 bg-blue-50'} px-3 py-1 rounded-full">
+                                ${isLocked ? 'Locked' : e.time}
+                            </span>
+                            ${isLocked ? '<span>🔒</span>' : `<span class="text-[10px] font-bold text-slate-400">Ends ${e.endTime}</span>`}
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800">${isLocked ? '??????' : e.name}</h3>
+                        <div class="flex items-center text-slate-400 text-sm mt-1 font-medium">
+                            ${isLocked ? `Reveals at ${e.revealTime}` : `📍 ${e.location}`}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (list.innerHTML !== html) list.innerHTML = html;
+        }
+
+        function renderAdminEvents(events) {
+            const list = document.getElementById('admin-events-list');
+            list.innerHTML = events.sort((a,b) => parseTime(a.time) - parseTime(b.time)).map(e => `
+                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                    <div class="truncate mr-4">
+                        <p class="font-bold text-slate-800 text-sm">${e.name}</p>
+                        <p class="text-[10px] text-slate-400 uppercase font-bold">${e.time} — ${e.endTime}</p>
+                    </div>
+                    <button class="edit-trigger px-3 py-1 bg-white border border-slate-200 rounded-lg text-blue-600 font-bold text-xs" data-id="${e.id}">Edit</button>
+                </div>
+            `).join('');
+            
+            list.querySelectorAll('.edit-trigger').forEach(btn => {
+                btn.onclick = () => window.editEntry('event', allEvents.find(e => e.id === btn.dataset.id));
+            });
+        }
+
+        function renderAdminMembers(members) {
+            const list = document.getElementById('admin-members-list');
+            list.innerHTML = members.map(m => `
+                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                    <div class="truncate mr-4">
+                        <p class="font-bold text-slate-800 text-sm">${m.name}</p>
+                        <p class="text-[10px] text-slate-400 uppercase font-bold">${m.tribe} • ${m.apartment}</p>
+                    </div>
+                    <button class="edit-member-trigger px-3 py-1 bg-white border border-slate-200 rounded-lg text-blue-600 font-bold text-xs" data-id="${m.id}">Edit</button>
+                </div>
+            `).join('');
+
+            list.querySelectorAll('.edit-member-trigger').forEach(btn => {
+                btn.onclick = () => window.editEntry('member', allMembers.find(m => m.id === btn.dataset.id));
+            });
+        }
+
+        window.openEditor = (type) => {
+            currentEditingType = type;
+            document.getElementById('edit-id').value = '';
+            document.getElementById('delete-btn').classList.add('hidden-view');
+            document.getElementById('editor-title').innerText = `Add ${type === 'event' ? 'Event' : 'Member'}`;
+            generateFormFields(type);
+            document.getElementById('editor-modal').classList.remove('hidden-view');
+        };
+
+        window.editEntry = (type, data) => {
+            currentEditingType = type;
+            document.getElementById('edit-id').value = data.id;
+            document.getElementById('delete-btn').classList.remove('hidden-view');
+            document.getElementById('editor-title').innerText = `Edit ${type === 'event' ? 'Event' : 'Member'}`;
+            generateFormFields(type, data);
+            document.getElementById('editor-modal').classList.remove('hidden-view');
+        };
+
+        window.closeEditor = () => document.getElementById('editor-modal').classList.add('hidden-view');
+
+        function generateFormFields(type, data = {}) {
+            const container = document.getElementById('form-fields');
+            const fields = type === 'event' ? [
+                { id: 'name', label: 'Event Name', val: data.name || '', placeholder: 'e.g. Session 1' },
+                { id: 'location', label: 'Location', val: data.location || '', placeholder: 'e.g. Activity Center' },
+                { id: 'time', label: 'Start Time', val: data.time || '', placeholder: 'e.g. 5:00 PM' },
+                { id: 'revealTime', label: 'Reveal Time', val: data.revealTime || '', placeholder: 'e.g. 4:30 PM' },
+                { id: 'endTime', label: 'End Time', val: data.endTime || '', placeholder: 'e.g. 7:00 PM' }
+            ] : [
+                { id: 'name', label: 'Full Name', val: data.name || '', placeholder: 'John Smith' },
+                { id: 'tribe', label: 'Tribe', val: data.tribe || '', placeholder: 'Judah' },
+                { id: 'apartment', label: 'Apartment', val: data.apartment || '', placeholder: 'A-101' }
+            ];
+            container.innerHTML = fields.map(f => `
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">${f.label}</label>
+                    <input id="f-${f.id}" value="${f.val}" placeholder="${f.placeholder}" class="w-full bg-slate-50 rounded-xl p-4 font-medium outline-none border-2 border-transparent focus:border-blue-500 transition-all" required>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('editor-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const collectionName = currentEditingType === 'event' ? 'events' : 'members';
+            const payload = {};
+            document.querySelectorAll('#form-fields input').forEach(input => {
+                payload[input.id.replace('f-', '')] = input.value;
+            });
+
+            try {
+                if (id) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionName, id), payload);
+                } else {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', collectionName), payload);
+                }
+                window.closeEditor();
+            } catch (err) { console.error(err); }
+        };
+
+        document.getElementById('delete-btn').onclick = async () => {
+            const id = document.getElementById('edit-id').value;
+            const collectionName = currentEditingType === 'event' ? 'events' : 'members';
+            if (id && confirm('Delete this entry?')) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionName, id));
+                    window.closeEditor();
+                } catch (err) { console.error(err); }
+            }
+        };
+
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (user) setupDataSync();
+        });
+
+        initAuth();
     </script>
 </body>
 </html>
