@@ -62,6 +62,10 @@
         .admin-widget {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         }
+
+        .community-widget {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
     </style>
 </head>
 <body>
@@ -107,7 +111,7 @@
                 </section>
             </div>
 
-            <!-- PROFILE VIEW (Now includes Admin Controls) -->
+            <!-- PROFILE VIEW -->
             <div id="view-profile" class="view-content">
                 <header class="mb-10 pt-8">
                     <h1 class="text-4xl font-black text-slate-900">Account</h1>
@@ -138,6 +142,25 @@
                         <button class="flex flex-col items-center justify-center p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all aspect-square border border-white/5">
                             <span class="text-2xl mb-2">🗓️</span>
                             <span class="text-[11px] font-black uppercase tracking-tight text-center">Manage Events</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ATTENDEE COMMUNITY WIDGET -->
+                <div id="attendee-controls" class="hidden community-widget p-8 rounded-[2.5rem] border border-blue-100 shadow-sm mb-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-black text-sm uppercase tracking-widest text-blue-800 opacity-80">Community Hub</h3>
+                        <span class="text-[9px] font-bold text-blue-500 uppercase">Your Group</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="flex flex-col items-center justify-center p-4 bg-white hover:bg-blue-50 rounded-2xl transition-all aspect-square border border-blue-200/50 shadow-sm">
+                            <span class="text-2xl mb-2">🛡️</span>
+                            <span class="text-[11px] font-black uppercase tracking-tight text-blue-900 text-center">My Tribe</span>
+                        </button>
+                        <button class="flex flex-col items-center justify-center p-4 bg-white hover:bg-blue-50 rounded-2xl transition-all aspect-square border border-blue-200/50 shadow-sm">
+                            <span class="text-2xl mb-2">🏠</span>
+                            <span class="text-[11px] font-black uppercase tracking-tight text-blue-900 text-center">Apartment</span>
                         </button>
                     </div>
                 </div>
@@ -202,8 +225,10 @@
 
             if(isAdmin) {
                 document.getElementById('admin-controls').classList.remove('hidden');
+                document.getElementById('attendee-controls').classList.add('hidden');
             } else {
                 document.getElementById('admin-controls').classList.add('hidden');
+                document.getElementById('attendee-controls').classList.remove('hidden');
             }
 
             document.getElementById('gateway-view').style.display = 'none';
