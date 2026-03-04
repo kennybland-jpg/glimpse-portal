@@ -41,7 +41,6 @@
             box-sizing: border-box;
         }
 
-        /* The specific state change class */
         .show-login { transform: translateX(-50%); }
 
         .btn-press:active { transform: scale(0.96); }
@@ -54,6 +53,46 @@
             z-index: 100;
             overflow-y: auto;
         }
+
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item.active {
+            background-color: #2563eb;
+            color: white;
+            transform: translateY(-4px);
+        }
+
+        .view-content {
+            display: none;
+        }
+        .view-content.active {
+            display: block;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .locked-shimmer {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
     </style>
 </head>
 <body>
@@ -61,24 +100,16 @@
     <!-- GATEWAY VIEW -->
     <div id="gateway-view" class="glass-card">
         <div id="main-slider" class="slider-container">
-            
-            <!-- START SCREEN -->
             <div class="screen flex flex-col items-center text-center">
-                <div class="w-20 h-20 bg-blue-600 rounded-3xl mb-6 flex items-center justify-center shadow-xl text-3xl">✨</div>
+                <div class="w-20 h-20 bg-blue-600 rounded-3xl mb-6 flex items-center justify-center shadow-xl text-3xl text-white">✨</div>
                 <h1 class="text-4xl font-black text-slate-900 tracking-tighter mb-1">Glimpse</h1>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-10">RDS 2026 Preview</p>
-                
                 <div class="w-full space-y-3">
-                    <button id="btn-attendee" class="btn-press w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg transition-all shadow-lg shadow-blue-500/20">
-                        Attendee Login
-                    </button>
-                    <button id="btn-staff" class="btn-press w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl font-bold transition-all">
-                        Staff Portal
-                    </button>
+                    <button id="btn-attendee" class="btn-press w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg transition-all shadow-lg shadow-blue-500/20">Attendee Login</button>
+                    <button id="btn-staff" class="btn-press w-full py-5 border-2 border-slate-100 text-slate-400 rounded-2xl font-bold transition-all">Staff Portal</button>
                 </div>
             </div>
 
-            <!-- LOGIN SCREEN -->
             <div class="screen">
                 <div class="flex items-center justify-between mb-8">
                     <h2 id="login-label" class="text-2xl font-black text-slate-900 tracking-tight">Login</h2>
@@ -86,141 +117,352 @@
                         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
                     </button>
                 </div>
-
                 <div class="space-y-6">
                     <div>
                         <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800" placeholder="Your Name" />
                         <p id="error-text" class="text-red-500 text-[10px] font-black mt-3 uppercase hidden">Invalid Passcode</p>
                     </div>
-                    <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl transition-all">
-                        Enter Portal
-                    </button>
+                    <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl transition-all">Enter Portal</button>
                 </div>
             </div>
-
         </div>
     </div>
 
     <!-- MAIN APP VIEW -->
     <div id="app-view">
-        <div class="max-w-md mx-auto min-h-screen p-8">
-            <header class="mb-10 pt-8">
-                <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Welcome Back</p>
-                <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
-            </header>
-            
-            <section>
-                <h3 class="text-slate-300 font-black text-xs uppercase tracking-widest mb-6">Your Weekend Schedule</h3>
-                <div id="schedule-feed" class="space-y-4">
-                    <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
-                    <div class="p-6 bg-slate-50 rounded-3xl animate-pulse"></div>
-                </div>
-            </section>
+        <div class="max-w-md mx-auto min-h-screen p-8 pb-32">
+            <div id="view-schedule" class="view-content active">
+                <header class="mb-10 pt-8">
+                    <p class="text-blue-600 font-black text-[10px] uppercase tracking-widest mb-1">Welcome Back</p>
+                    <h1 class="text-4xl font-black text-slate-900">Hey, <span id="display-name">Guest</span></h1>
+                </header>
+                <section>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-slate-300 font-black text-xs uppercase tracking-widest">Your Weekend Schedule</h3>
+                        <div id="live-clock" class="text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase">--:--:--</div>
+                    </div>
+                    <div id="schedule-feed" class="space-y-4"></div>
+                </section>
+            </div>
 
-            <nav class="fixed bottom-8 left-0 right-0 px-8">
-                <div class="max-w-[280px] mx-auto bg-slate-900 rounded-full p-2 flex justify-between shadow-2xl">
-                    <button class="w-12 h-12 flex items-center justify-center bg-blue-600 rounded-full text-white">🏠</button>
-                    <button id="btn-logout" class="w-12 h-12 flex items-center justify-center text-slate-500">🚪</button>
+            <div id="view-profile" class="view-content">
+                <header class="mb-10 pt-8">
+                    <h1 class="text-4xl font-black text-slate-900">Your Profile</h1>
+                </header>
+                <div class="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center mb-6">
+                    <div class="w-24 h-24 bg-slate-200 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">👤</div>
+                    <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
+                    <p id="profile-role" class="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">Attendee</p>
+                    <div class="mt-8 pt-8 border-t border-slate-200">
+                        <button id="btn-logout" class="text-red-500 font-black text-sm uppercase tracking-widest">Logout Session</button>
+                    </div>
+                </div>
+                <div id="attendee-community-widget" class="hidden space-y-3">
+                    <h4 class="text-slate-300 font-black text-xs uppercase tracking-widest mb-4">My Community</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="showCommunity('tribe')" class="p-5 bg-blue-600 text-white rounded-[1.5rem] text-center shadow-lg shadow-blue-500/20">
+                            <span class="block text-[10px] uppercase font-black opacity-60 mb-1">My Tribe</span>
+                            <span id="tribe-label" class="text-sm font-black">---</span>
+                        </button>
+                        <button onclick="showCommunity('apt')" class="p-5 bg-slate-900 text-white rounded-[1.5rem] text-center shadow-lg">
+                            <span class="block text-[10px] uppercase font-black opacity-60 mb-1">My Building</span>
+                            <span id="apt-label" class="text-sm font-black">---</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="staff-mgmt-widget" class="hidden space-y-4">
+                    <h4 class="text-slate-300 font-black text-xs uppercase tracking-widest mb-4">Management Console</h4>
+                    <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-4 shadow-xl">
+                        <button id="admin-open-events" class="w-full py-4 bg-blue-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2"><span>📅</span> Manage Events</button>
+                        <button id="admin-open-members" class="w-full py-4 bg-slate-800 rounded-2xl font-black text-sm flex items-center justify-center gap-2"><span>👥</span> Manage Members</button>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
+                <div id="nav-container" class="max-w-xs mx-auto bg-slate-900 rounded-full p-2 flex justify-center space-x-4 shadow-2xl">
+                    <button data-view="schedule" class="nav-item active w-14 h-14 flex flex-col items-center justify-center rounded-full text-slate-400"><span class="text-xl">📅</span></button>
+                    <button data-view="profile" class="nav-item w-14 h-14 flex flex-col items-center justify-center rounded-full text-slate-400"><span class="text-xl">👤</span></button>
                 </div>
             </nav>
         </div>
     </div>
 
+    <!-- MODALS -->
+    <div id="modal-community" class="modal-overlay">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <div><h3 id="community-title" class="text-2xl font-black text-slate-900">Community</h3><p id="community-subtitle" class="text-[10px] font-black text-blue-600 uppercase tracking-widest"></p></div>
+                <button onclick="closeModals()" class="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 font-black">×</button>
+            </div>
+            <div id="community-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+        </div>
+    </div>
+
+    <div id="modal-events" class="modal-overlay">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-black mb-6">Events</h3>
+            <form id="form-event" class="space-y-4">
+                <input type="hidden" id="event-id">
+                <input required id="ev-name" class="w-full bg-slate-50 p-4 rounded-xl font-bold" placeholder="Event Name">
+                <input required id="ev-location" class="w-full bg-slate-50 p-4 rounded-xl font-bold" placeholder="Location">
+                <input required id="ev-start" type="datetime-local" class="w-full bg-slate-50 p-4 rounded-xl font-bold">
+                <input required id="ev-reveal" type="datetime-local" class="w-full bg-slate-50 p-4 rounded-xl font-bold">
+                <input required id="ev-end" type="datetime-local" class="w-full bg-slate-50 p-4 rounded-xl font-bold">
+                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black">Save Event</button>
+            </form>
+            <div id="admin-events-list" class="mt-8 space-y-2"></div>
+            <button onclick="closeModals()" class="w-full mt-4 p-4 bg-slate-100 rounded-xl font-black">Close</button>
+        </div>
+    </div>
+
+    <div id="modal-members" class="modal-overlay">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-black mb-6">Members</h3>
+            <form id="form-member" class="space-y-4">
+                <input type="hidden" id="member-id">
+                <input required id="mem-name" class="w-full bg-slate-50 p-4 rounded-xl font-bold" placeholder="Full Name">
+                <input required id="mem-tribe" class="w-full bg-slate-50 p-4 rounded-xl font-bold" placeholder="Tribe Name">
+                <input required id="mem-apt" class="w-full bg-slate-50 p-4 rounded-xl font-bold" placeholder="Apartment #">
+                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black">Save Member</button>
+            </form>
+            <div id="admin-members-list" class="mt-8 space-y-2"></div>
+            <button onclick="closeModals()" class="w-full mt-4 p-4 bg-slate-100 rounded-xl font-black">Close</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // State
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
+
+        let user = null;
         let currentMode = 'attendee';
+        let allMembers = [];
+        let allEvents = [];
+        let myProfile = null;
 
-        // Elements
+        // --- Core UI Transitions ---
         const slider = document.getElementById('main-slider');
-        const input = document.getElementById('user-input');
-        const label = document.getElementById('login-label');
-        const error = document.getElementById('error-text');
+        const loginInput = document.getElementById('user-input');
         
-        const btnAttendee = document.getElementById('btn-attendee');
-        const btnStaff = document.getElementById('btn-staff');
-        const btnBack = document.getElementById('btn-back');
-        const btnEnter = document.getElementById('btn-enter');
-        const btnLogout = document.getElementById('btn-logout');
+        document.getElementById('btn-attendee').onclick = () => { currentMode = 'attendee'; slider.classList.add('show-login'); loginInput.placeholder = "First Name"; };
+        document.getElementById('btn-staff').onclick = () => { currentMode = 'staff'; slider.classList.add('show-login'); loginInput.placeholder = "Passcode"; loginInput.type = "password"; };
+        document.getElementById('btn-back').onclick = () => { slider.classList.remove('show-login'); };
+        document.getElementById('btn-logout').onclick = () => location.reload();
 
-        // Event Listeners (The reliable way)
-        btnAttendee.addEventListener('click', () => {
-            currentMode = 'attendee';
-            label.innerText = 'Login';
-            input.placeholder = 'Full Name';
-            input.type = 'text';
-            slider.classList.add('show-login');
-        });
-
-        btnStaff.addEventListener('click', () => {
-            currentMode = 'staff';
-            label.innerText = 'Staff Portal';
-            input.placeholder = 'Passcode';
-            input.type = 'password';
-            slider.classList.add('show-login');
-        });
-
-        btnBack.addEventListener('click', () => {
-            slider.classList.remove('show-login');
-            error.classList.add('hidden');
-        });
-
-        btnEnter.addEventListener('click', async () => {
-            const val = input.value.trim();
+        document.getElementById('btn-enter').onclick = () => {
+            const val = loginInput.value.trim();
             if(!val) return;
-
             if(currentMode === 'staff' && val !== 'RDS12admin') {
-                error.classList.remove('hidden');
+                document.getElementById('error-text').classList.remove('hidden');
                 return;
             }
+            enterApp(val);
+        };
 
-            document.getElementById('display-name').innerText = currentMode === 'staff' ? 'Staff Member' : val;
+        function enterApp(name) {
+            document.getElementById('display-name').innerText = name;
+            document.getElementById('profile-name').innerText = name;
+            document.getElementById('profile-role').innerText = currentMode === 'staff' ? 'Event Staff' : 'Attendee';
+            
+            if(currentMode === 'staff') {
+                document.getElementById('staff-mgmt-widget').classList.remove('hidden');
+            } else {
+                document.getElementById('attendee-community-widget').classList.remove('hidden');
+            }
+
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
-
-            initFirebase();
-        });
-
-        btnLogout.addEventListener('click', () => {
-            location.reload();
-        });
-
-        async function initFirebase() {
-            try {
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                const db = getFirestore(app);
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'glimpse-2026';
-
-                await signInAnonymously(auth);
-
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (snap) => {
-                    const events = snap.docs.map(doc => doc.data()).sort((a,b) => a.time.localeCompare(b.time));
-                    const feed = document.getElementById('schedule-feed');
-                    
-                    if (events.length === 0) {
-                        feed.innerHTML = `<p class="text-slate-400 text-center py-10 font-bold">Waiting for schedule updates...</p>`;
-                        return;
-                    }
-
-                    feed.innerHTML = events.map(e => `
-                        <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black text-blue-600 shadow-sm">${e.time}</span>
-                                <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">${e.location || 'RDS'}</span>
-                            </div>
-                            <h4 class="text-lg font-black text-slate-900">${e.name}</h4>
-                        </div>
-                    `).join('');
-                });
-            } catch (err) {
-                console.error("Firebase startup failed:", err);
-            }
+            
+            initData(name);
         }
+
+        // --- Data Layer ---
+        async function initData(name) {
+            await signInAnonymously(auth);
+            onAuthStateChanged(auth, (u) => {
+                user = u;
+                if(!user) return;
+
+                // Sync Events
+                const eventsCol = collection(db, 'artifacts', appId, 'public', 'data', 'events');
+                onSnapshot(eventsCol, (snap) => {
+                    allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderSchedule();
+                    renderAdminEvents();
+                }, (e) => console.error(e));
+
+                // Sync Members
+                const membersCol = collection(db, 'artifacts', appId, 'public', 'data', 'members');
+                onSnapshot(membersCol, (snap) => {
+                    allMembers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    myProfile = allMembers.find(m => m.firstName?.toLowerCase() === name.toLowerCase());
+                    if(myProfile) {
+                        document.getElementById('tribe-label').innerText = myProfile.tribe || 'None';
+                        document.getElementById('apt-label').innerText = `Apt ${myProfile.apartment || '??'}`;
+                    }
+                    renderAdminMembers();
+                }, (e) => console.error(e));
+            });
+        }
+
+        // --- Admin Handlers ---
+        document.getElementById('admin-open-events').onclick = () => document.getElementById('modal-events').classList.add('active');
+        document.getElementById('admin-open-members').onclick = () => document.getElementById('modal-members').classList.add('active');
+
+        document.getElementById('form-event').onsubmit = async (e) => {
+            e.preventDefault();
+            if(!user) return;
+            const id = document.getElementById('event-id').value;
+            const data = {
+                name: document.getElementById('ev-name').value,
+                location: document.getElementById('ev-location').value,
+                start: document.getElementById('ev-start').value,
+                reveal: document.getElementById('ev-reveal').value,
+                end: document.getElementById('ev-end').value
+            };
+            try {
+                if(id) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id), data);
+                else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), data);
+                e.target.reset();
+                document.getElementById('event-id').value = '';
+            } catch(err) { console.error(err); }
+        };
+
+        document.getElementById('form-member').onsubmit = async (e) => {
+            e.preventDefault();
+            if(!user) return;
+            const id = document.getElementById('member-id').value;
+            const data = {
+                firstName: document.getElementById('mem-name').value,
+                tribe: document.getElementById('mem-tribe').value,
+                apartment: document.getElementById('mem-apt').value
+            };
+            try {
+                if(id) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', id), data);
+                else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'members'), data);
+                e.target.reset();
+                document.getElementById('member-id').value = '';
+            } catch(err) { console.error(err); }
+        };
+
+        window.deleteItem = async (col, id) => {
+            if(!confirm('Delete this?')) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
+        };
+
+        window.editEvent = (id) => {
+            const e = allEvents.find(x => x.id === id);
+            document.getElementById('event-id').value = id;
+            document.getElementById('ev-name').value = e.name;
+            document.getElementById('ev-location').value = e.location;
+            document.getElementById('ev-start').value = e.start;
+            document.getElementById('ev-reveal').value = e.reveal;
+            document.getElementById('ev-end').value = e.end;
+        };
+
+        window.editMember = (id) => {
+            const m = allMembers.find(x => x.id === id);
+            document.getElementById('member-id').value = id;
+            document.getElementById('mem-name').value = m.firstName;
+            document.getElementById('mem-tribe').value = m.tribe;
+            document.getElementById('mem-apt').value = m.apartment;
+        };
+
+        // --- Rendering ---
+        function renderSchedule() {
+            const feed = document.getElementById('schedule-feed');
+            const now = new Date();
+            const sorted = allEvents.sort((a,b) => new Date(a.start) - new Date(b.start));
+            
+            feed.innerHTML = sorted.map(e => {
+                const isLocked = now < new Date(e.reveal) && currentMode !== 'staff';
+                const time = new Date(e.start).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                if(isLocked) return `
+                    <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <div class="h-4 w-12 bg-white rounded mb-2"></div>
+                        <div class="h-6 w-2/3 locked-shimmer rounded mb-2"></div>
+                        <div class="h-3 w-1/3 locked-shimmer rounded"></div>
+                    </div>
+                `;
+                return `
+                    <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <span class="text-[10px] font-black text-blue-600 bg-white px-3 py-1 rounded-full shadow-sm">${time}</span>
+                        <h4 class="text-lg font-black mt-2">${e.name}</h4>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mt-1">${e.location}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAdminEvents() {
+            const list = document.getElementById('admin-events-list');
+            list.innerHTML = allEvents.map(e => `
+                <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center">
+                    <span class="text-xs font-black truncate max-w-[150px]">${e.name}</span>
+                    <div class="flex gap-1">
+                        <button onclick="editEvent('${e.id}')" class="p-2 bg-blue-100 text-blue-600 rounded-lg text-[10px] font-black">EDIT</button>
+                        <button onclick="deleteItem('events', '${e.id}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-[10px] font-black">×</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdminMembers() {
+            const list = document.getElementById('admin-members-list');
+            list.innerHTML = allMembers.map(m => `
+                <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center">
+                    <span class="text-xs font-black">${m.firstName}</span>
+                    <div class="flex gap-1">
+                        <button onclick="editMember('${m.id}')" class="p-2 bg-blue-100 text-blue-600 rounded-lg text-[10px] font-black">EDIT</button>
+                        <button onclick="deleteItem('members', '${m.id}')" class="p-2 bg-red-100 text-red-600 rounded-lg text-[10px] font-black">×</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.showCommunity = (type) => {
+            if(!myProfile) return;
+            const modal = document.getElementById('modal-community');
+            const list = document.getElementById('community-list');
+            const isTribe = type === 'tribe';
+            
+            document.getElementById('community-title').innerText = isTribe ? 'My Tribe' : 'My Building';
+            document.getElementById('community-subtitle').innerText = isTribe ? myProfile.tribe : `Apartment ${myProfile.apartment}`;
+            
+            const filtered = allMembers.filter(m => isTribe ? m.tribe === myProfile.tribe : m.apartment === myProfile.apartment);
+            list.innerHTML = filtered.map(m => `
+                <div class="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">
+                    <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs shadow-sm">👤</div>
+                    <div><p class="font-black text-xs">${m.firstName}</p><p class="text-[8px] font-bold text-slate-400 uppercase">${m.tribe} • Apt ${m.apartment}</p></div>
+                </div>
+            `).join('');
+            modal.classList.add('active');
+        };
+
+        window.closeModals = () => document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+
+        // Nav Toggle
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+                document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
+            };
+        });
+
+        setInterval(() => {
+            const clock = document.getElementById('live-clock');
+            if(clock) clock.innerText = new Date().toLocaleTimeString();
+        }, 1000);
     </script>
 </body>
 </html>
