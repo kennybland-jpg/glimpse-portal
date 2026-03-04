@@ -25,6 +25,9 @@
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        .clickable-card { cursor: pointer; transition: transform 0.2s; }
+        .clickable-card:active { transform: scale(0.95); background-color: #f8fafc; }
     </style>
 </head>
 <body>
@@ -40,7 +43,7 @@
         </div>
     </div>
 
-    <!-- The Gateway / Login Screen -->
+    <!-- Gateway View -->
     <div id="gateway-view" class="glass-card">
         <div class="flex flex-col items-center text-center">
             <div class="w-16 h-16 bg-blue-600 rounded-2xl mb-6 flex items-center justify-center shadow-xl text-2xl text-white">✨</div>
@@ -76,18 +79,20 @@
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                     
                     <div id="attendee-widgets" class="grid grid-cols-2 gap-3 mt-6">
-                        <div class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left">
+                        <div id="tribe-card" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left clickable-card">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Tribe</span>
                             <span id="display-tribe" class="text-sm font-black text-blue-600">None</span>
+                            <span class="block text-[8px] text-slate-300 mt-1">Tap to view members</span>
                         </div>
-                        <div class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left">
+                        <div id="apt-card" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 text-left clickable-card">
                             <span class="block text-[9px] font-black text-slate-400 uppercase mb-1">Apt</span>
                             <span id="display-apt" class="text-sm font-black text-blue-600">None</span>
+                            <span class="block text-[8px] text-slate-300 mt-1">Tap to view roommates</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Staff Control Widget (Admin Only) -->
+                <!-- Staff Control Widget -->
                 <div id="admin-controls" class="hidden admin-widget p-8 rounded-[2.5rem] text-white shadow-xl mb-6">
                     <h3 class="font-black text-sm uppercase tracking-widest opacity-80 mb-6">Staff Control</h3>
                     <div class="grid grid-cols-2 gap-3">
@@ -114,7 +119,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Hard-coded configuration from user
         const firebaseConfig = {
             apiKey: "AIzaSyDPSo9wjrQsnrYfnN4a-STKJ43Avr5Et8A",
             authDomain: "glimpse-2026.firebaseapp.com",
@@ -126,20 +130,8 @@
         };
 
         const appId = 'glimpse-2026';
-        let db, auth, currentUser = null;
+        let db, auth, currentUserData = null;
         let allMembers = [], allEvents = [];
-        let lastRenderedTimeStr = "";
-
-        // Core Functions
-        function getCurrentTimeStr() {
-            const now = new Date();
-            return now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-        }
-
-        function isAfter(timeA, timeB) {
-            if (!timeA || !timeB) return false;
-            return timeA >= timeB;
-        }
 
         const modal = {
             el: document.getElementById('modal-overlay'),
@@ -155,87 +147,118 @@
             hide: function() { this.el.style.display = 'none'; }
         };
 
-        // Firebase Initialization
         async function init() {
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
 
-            // Using Anonymous Auth as default for access
             await signInAnonymously(auth);
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    currentUser = user;
                     syncData();
-                    startClock();
                 }
             });
         }
 
         function syncData() {
-            if (!currentUser) return;
-
-            // Use the mandatory path structure for this environment
             const eventsCol = collection(db, 'artifacts', appId, 'public', 'data', 'events');
             const membersCol = collection(db, 'artifacts', appId, 'public', 'data', 'members');
 
             onSnapshot(eventsCol, (snap) => {
                 allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderSchedule();
-            }, (err) => console.error("Event Sync Error:", err));
+            });
 
             onSnapshot(membersCol, (snap) => {
                 allMembers = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            }, (err) => console.error("Member Sync Error:", err));
-        }
-
-        function startClock() {
-            setInterval(() => {
-                const nowTime = getCurrentTimeStr();
-                if (nowTime !== lastRenderedTimeStr) {
-                    renderSchedule();
-                    lastRenderedTimeStr = nowTime;
+                // If already logged in, update UI with potentially new data
+                if(currentUserData) {
+                    const fresh = allMembers.find(m => m.name.toLowerCase() === currentUserData.name.toLowerCase());
+                    if(fresh) updateAttendeeUI(fresh);
                 }
-            }, 1000);
+            });
         }
 
         function renderSchedule() {
             const feed = document.getElementById('schedule-feed');
-            const nowTime = getCurrentTimeStr();
+            const now = new Date();
+            const nowStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
             
-            const activeEvents = allEvents.filter(e => {
-                if (!e.endTime) return true;
-                return !isAfter(nowTime, e.endTime);
-            });
-
+            const activeEvents = allEvents.filter(e => !e.endTime || e.endTime >= nowStr);
             const html = activeEvents
                 .sort((a,b) => (a.time||'').localeCompare(b.time||''))
                 .map(e => {
-                    const isLocked = e.revealTime && !isAfter(nowTime, e.revealTime);
-                    
+                    const isLocked = e.revealTime && nowStr < e.revealTime;
                     return `
-                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden reveal-anim">
+                        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm reveal-anim">
                             <div class="flex justify-between items-center">
                                 <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
                                 ${isLocked ? '<span>🔒</span>' : ''}
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mt-3">
-                                ${isLocked ? '<span class="text-slate-300 italic">Mystery Event</span>' : e.name}
-                            </h3>
+                            <h3 class="text-xl font-black text-slate-800 mt-3">${isLocked ? '<span class="text-slate-200 italic">Classified</span>' : e.name}</h3>
                             <div class="flex items-center gap-1 mt-1">
-                                <span class="text-xs ${isLocked ? 'text-slate-300' : 'text-slate-400'} font-bold">
-                                    ${isLocked ? '???' : (e.location || 'Main Venue')}
-                                </span>
+                                <span class="text-xs text-slate-400 font-bold">${isLocked ? '???' : (e.location || 'TBD')}</span>
                             </div>
                         </div>
                     `;
                 }).join('');
-
-            feed.innerHTML = html || '<div class="text-center py-20 text-slate-300 font-bold">No active events right now.</div>';
+            feed.innerHTML = html || '<p class="text-center py-10 text-slate-300">No events found.</p>';
         }
 
-        // Global functions for modal actions
+        function updateAttendeeUI(member) {
+            currentUserData = member;
+            document.getElementById('display-tribe').innerText = member.tribe || "Unassigned";
+            document.getElementById('display-apt').innerText = member.apt || "Unassigned";
+        }
+
+        function showGrouping(type, value) {
+            if(!value || value === "Unassigned") return;
+            const matches = allMembers.filter(m => m[type] === value);
+            const listHtml = matches.map(m => `
+                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-2">
+                    <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs shadow-sm">👤</div>
+                    <div class="text-sm font-bold text-slate-800">${m.name}</div>
+                </div>
+            `).join('');
+            modal.show(`${type === 'tribe' ? 'Tribe' : 'Apt'} members: ${value}`, `
+                <div class="pt-2">${listHtml || '<p class="text-slate-400">Nobody else here yet.</p>'}</div>
+            `);
+        }
+
+        // Logic for Attendee Interactions
+        document.getElementById('tribe-card').onclick = () => {
+            if(currentUserData) showGrouping('tribe', currentUserData.tribe);
+        };
+        document.getElementById('apt-card').onclick = () => {
+            if(currentUserData) showGrouping('apt', currentUserData.apt);
+        };
+
+        // Login Logic
+        document.getElementById('btn-enter').onclick = () => {
+            const name = document.getElementById('user-input').value.trim();
+            if (!name) return;
+            
+            document.getElementById('display-name').innerText = name.split(' ')[0];
+            document.getElementById('profile-name').innerText = name;
+            
+            const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
+            document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
+            document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
+            
+            const matched = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
+            if(matched) {
+                updateAttendeeUI(matched);
+            } else {
+                currentUserData = { name: name, tribe: 'Unassigned', apt: 'Unassigned' };
+                updateAttendeeUI(currentUserData);
+            }
+
+            document.getElementById('gateway-view').style.display = 'none';
+            document.getElementById('app-view').style.display = 'block';
+        };
+
+        // Member Management
         window.editMember = (id) => openMemberForm(allMembers.find(x => x.id === id));
         window.editEvent = (id) => openEventForm(allEvents.find(x => x.id === id));
 
@@ -253,22 +276,18 @@
             
             document.getElementById('btn-submit-member').onclick = async () => {
                 const nameInput = document.getElementById('f-name').value.trim();
-                if(!nameInput) return;
                 const data = {
                     name: nameInput,
                     tribe: document.getElementById('f-tribe').value,
                     apt: document.getElementById('f-apt').value
                 };
-                const docId = m?.id || nameInput.toLowerCase().replace(/\s+/g, '-');
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', docId), data);
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m?.id || nameInput.toLowerCase().replace(/\s+/g, '-')), data);
                 modal.hide();
             };
-            if(m) {
-                document.getElementById('btn-del-member').onclick = async () => {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id));
-                    modal.hide();
-                };
-            }
+            if(m) document.getElementById('btn-del-member').onclick = async () => {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id));
+                modal.hide();
+            };
         }
 
         function openEventForm(e = null) {
@@ -277,25 +296,15 @@
                     <input id="e-name" class="input-pill" placeholder="Event Name" value="${e?.name || ''}">
                     <input id="e-loc" class="input-pill" placeholder="Location" value="${e?.location || ''}">
                     <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Reveal</label>
-                            <input id="e-reveal" type="time" class="input-pill" value="${e?.revealTime || ''}">
-                        </div>
-                        <div>
-                            <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Start</label>
-                            <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
-                        </div>
+                        <input id="e-reveal" type="time" class="input-pill" value="${e?.revealTime || ''}">
+                        <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
                     </div>
-                    <div>
-                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1">End Time</label>
-                        <input id="e-end" type="time" class="input-pill" value="${e?.endTime || ''}">
-                    </div>
+                    <input id="e-end" type="time" class="input-pill" placeholder="End Time" value="${e?.endTime || ''}">
                 </div>
             `, `
                 <button id="btn-submit-event" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save</button>
                 ${e ? `<button id="btn-del-event" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
             `);
-            
             document.getElementById('btn-submit-event').onclick = async () => {
                 const data = {
                     name: document.getElementById('e-name').value,
@@ -307,44 +316,12 @@
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e?.id || Date.now().toString()), data);
                 modal.hide();
             };
-
-            if(e) {
-                document.getElementById('btn-del-event').onclick = async () => {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
-                    modal.hide();
-                };
-            }
+            if(e) document.getElementById('btn-del-event').onclick = async () => {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
+                modal.hide();
+            };
         }
 
-        // Login Logic
-        document.getElementById('btn-enter').onclick = () => {
-            const name = document.getElementById('user-input').value.trim();
-            if (!name) return;
-            
-            document.getElementById('display-name').innerText = name.split(' ')[0];
-            document.getElementById('profile-name').innerText = name;
-            
-            const isAdmin = name.toUpperCase() === 'RDS12ADMIN';
-            document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
-            document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
-            
-            const matchedMember = allMembers.find(m => m.name.toUpperCase() === name.toUpperCase());
-            if(matchedMember && !isAdmin) {
-                document.getElementById('display-tribe').innerText = matchedMember.tribe || "None";
-                document.getElementById('display-apt').innerText = matchedMember.apt || "None";
-            } else if (!isAdmin) {
-                document.getElementById('display-tribe').innerText = "Unregistered";
-                document.getElementById('display-apt').innerText = "-";
-            }
-
-            document.getElementById('gateway-view').style.display = 'none';
-            document.getElementById('app-view').style.display = 'block';
-        };
-
-        // Navigation and Utility
-        document.getElementById('btn-logout').onclick = () => location.reload();
-        document.getElementById('btn-close-modal').onclick = () => modal.hide();
-        
         document.getElementById('btn-manage-members').onclick = () => {
             const list = allMembers.map(m => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
@@ -352,24 +329,18 @@
                     <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
                 </div>
             `).join('');
-            modal.show("Members", `
-                <button id="m-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4 shadow-lg">+ Add Member</button>
-                <div class="pb-4">${list || '<p class="text-center text-slate-400 py-4">No members yet</p>'}</div>
-            `);
+            modal.show("Members", `<button id="m-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Member</button><div class="pb-4">${list}</div>`);
             document.getElementById('m-add').onclick = () => openMemberForm();
         };
 
         document.getElementById('btn-manage-events').onclick = () => {
-            const list = allEvents.sort((a,b) => (a.time||'').localeCompare(b.time||'')).map(e => `
+            const list = allEvents.map(e => `
                 <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
                     <div class="text-sm font-bold text-slate-800">${e.name}</div>
                     <button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
                 </div>
             `).join('');
-            modal.show("Events", `
-                <button id="e-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4 shadow-lg">+ Add Event</button>
-                <div class="pb-4">${list || '<p class="text-center text-slate-400 py-4">No events yet</p>'}</div>
-            `);
+            modal.show("Events", `<button id="e-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Event</button><div class="pb-4">${list}</div>`);
             document.getElementById('e-add').onclick = () => openEventForm();
         };
 
@@ -381,6 +352,9 @@
                 document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
             };
         });
+
+        document.getElementById('btn-close-modal').onclick = () => modal.hide();
+        document.getElementById('btn-logout').onclick = () => location.reload();
 
         init();
     </script>
