@@ -28,7 +28,7 @@
         <div class="glass-card max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="modal-title" class="text-2xl font-black">Details</h2>
-                <button id="btn-close-modal" class="text-slate-400 font-bold">Close</button>
+                <button id="btn-close-modal" class="text-slate-400 font-bold p-2">✕</button>
             </div>
             <div id="modal-body" class="overflow-y-auto pr-2 space-y-4">
                 <!-- Content injected dynamically -->
@@ -59,7 +59,6 @@
                 <input id="user-input" type="text" class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl px-5 py-4 outline-none font-bold text-slate-800 text-center uppercase" placeholder="Enter your full name" />
                 <button id="btn-enter" class="btn-press w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl">Access Portal</button>
             </div>
-            <button id="btn-admin-reset" class="mt-8 text-[9px] text-slate-300 font-bold uppercase tracking-widest hover:text-red-400 transition-colors">Reset DB Connection</button>
         </div>
     </div>
 
@@ -80,7 +79,6 @@
                 <header class="mb-10 pt-8"><h1 class="text-4xl font-black text-slate-900">Account</h1></header>
                 
                 <div class="bg-slate-50 p-8 rounded-[2.5rem] text-center mb-6 border border-slate-100 relative">
-                    <div id="user-status-badge" class="absolute top-6 right-6 px-3 py-1 bg-green-500 text-white text-[9px] font-black rounded-full uppercase">Live</div>
                     <div class="w-24 h-24 bg-white shadow-sm rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border border-slate-100">👤</div>
                     <h2 id="profile-name" class="text-2xl font-black text-slate-900">Guest User</h2>
                     
@@ -106,7 +104,7 @@
                     </div>
                 </div>
 
-                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase">Switch User</button>
+                <button id="btn-logout" class="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase">Log Out</button>
             </div>
 
             <nav class="fixed bottom-8 left-0 right-0 px-8 z-[110]">
@@ -200,7 +198,10 @@
                 .sort((a,b) => (a.time||'').localeCompare(b.time||''))
                 .map(e => `
                     <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative group">
-                        <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
+                        <div class="flex gap-2">
+                             <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">${e.time || 'TBD'}</span>
+                             ${e.revealTime ? `<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">Reveals ${e.revealTime}</span>` : ''}
+                        </div>
                         <h3 class="text-xl font-black text-slate-800 mt-3">${e.name}</h3>
                         <p class="text-xs text-slate-400 font-bold mt-1">${e.location || 'Main Venue'}</p>
                     </div>
@@ -228,7 +229,7 @@
                         <div class="font-black text-slate-800">${m.name}</div>
                         <div class="text-[10px] text-slate-400 font-bold uppercase">${m.tribe} • Apt ${m.apt}</div>
                     </div>
-                    <button onclick="editMember('${m.id}')" class="text-blue-600 text-xs font-black">Edit</button>
+                    <button onclick="editMember('${m.id}')" class="text-blue-600 text-xs font-black p-2">Edit</button>
                 </div>
             `).join('');
             
@@ -246,9 +247,11 @@
 
         function openMemberForm(m = null) {
             modal.show(m ? "Edit Member" : "New Member", `
-                <input id="f-name" class="input-pill" placeholder="Full Name" value="${m?.name || ''}">
-                <input id="f-tribe" class="input-pill" placeholder="Tribe Name" value="${m?.tribe || ''}">
-                <input id="f-apt" class="input-pill" placeholder="Apartment No." value="${m?.apt || ''}">
+                <div class="space-y-4">
+                    <input id="f-name" class="input-pill" placeholder="Full Name" value="${m?.name || ''}">
+                    <input id="f-tribe" class="input-pill" placeholder="Tribe Name" value="${m?.tribe || ''}">
+                    <input id="f-apt" class="input-pill" placeholder="Apartment No." value="${m?.apt || ''}">
+                </div>
             `, `
                 <button id="btn-submit-member" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save</button>
                 ${m ? `<button id="btn-del-member" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
@@ -278,7 +281,7 @@
                         <div class="font-black text-slate-800">${e.name}</div>
                         <div class="text-[10px] text-slate-400 font-bold uppercase">${e.time} @ ${e.location}</div>
                     </div>
-                    <button onclick="editEvent('${e.id}')" class="text-blue-600 text-xs font-black">Edit</button>
+                    <button onclick="editEvent('${e.id}')" class="text-blue-600 text-xs font-black p-2">Edit</button>
                 </div>
             `).join('');
             
@@ -296,15 +299,26 @@
 
         function openEventForm(e = null) {
             modal.show(e ? "Edit Event" : "New Event", `
-                <input id="e-name" class="input-pill" placeholder="Event Name" value="${e?.name || ''}">
-                <input id="e-loc" class="input-pill" placeholder="Location" value="${e?.location || ''}">
-                <div class="grid grid-cols-2 gap-2">
+                <div class="space-y-4">
                     <div>
-                        <label class="text-[9px] font-black uppercase ml-1">Start Time</label>
-                        <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
+                        <label class="text-[9px] font-black uppercase ml-1 text-slate-400">Basic Info</label>
+                        <input id="e-name" class="input-pill mt-1" placeholder="Event Name" value="${e?.name || ''}">
                     </div>
                     <div>
-                        <label class="text-[9px] font-black uppercase ml-1">End Time</label>
+                        <input id="e-loc" class="input-pill" placeholder="Location" value="${e?.location || ''}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[9px] font-black uppercase ml-1 text-slate-400">Reveal Time</label>
+                            <input id="e-reveal" type="time" class="input-pill" value="${e?.revealTime || ''}">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-black uppercase ml-1 text-slate-400">Set Time</label>
+                            <input id="e-time" type="time" class="input-pill" value="${e?.time || ''}">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-black uppercase ml-1 text-slate-400">End Time</label>
                         <input id="e-end" type="time" class="input-pill" value="${e?.endTime || ''}">
                     </div>
                 </div>
@@ -318,7 +332,8 @@
                     name: document.getElementById('e-name').value,
                     location: document.getElementById('e-loc').value,
                     time: document.getElementById('e-time').value,
-                    endTime: document.getElementById('e-end').value
+                    endTime: document.getElementById('e-end').value,
+                    revealTime: document.getElementById('e-reveal').value
                 });
             };
             if(e) {
@@ -389,7 +404,6 @@
         document.getElementById('btn-manage-events').onclick = () => openEventManager();
         document.getElementById('btn-show-tribe').onclick = () => showDiscovery('tribe');
         document.getElementById('btn-show-apt').onclick = () => showDiscovery('apt');
-        document.getElementById('btn-admin-reset').onclick = () => { if(confirm("Reset DB?")) { localStorage.removeItem('glimpse_db_config'); location.reload(); } };
 
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.onclick = () => {
