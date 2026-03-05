@@ -40,6 +40,9 @@
 
         .star-active { color: #f59e0b; }
         .star-inactive { color: #cbd5e1; }
+
+        .locked-privileged { border: 2px dashed #fbbf24; background: #fffcf2; }
+        .locked-tag { background: #fbbf24; color: #78350f; font-size: 8px; font-weight: 900; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
     </style>
 </head>
 <body>
@@ -197,8 +200,6 @@
             db = getFirestore(app);
             await signInAnonymously(auth);
             onAuthStateChanged(auth, (user) => { if (user) syncData(); });
-
-            // Start Cleanup Cycle (Every 60 seconds)
             setInterval(cleanupExpiredEvents, 60000);
         }
 
@@ -228,9 +229,6 @@
                     const fresh = allMembers.find(m => m.name.toLowerCase() === currentUserData.name.toLowerCase());
                     if(fresh) updateAttendeeUI(fresh);
                 }
-                if (modal.el.style.display === 'flex' && modal.title.innerText === "Members") {
-                    document.getElementById('btn-manage-members').click();
-                }
             }, (err) => console.error(err));
         }
 
@@ -257,6 +255,7 @@
         function renderSchedule() {
             const feed = document.getElementById('schedule-feed');
             const now = new Date();
+            const hasPrivilege = isAdmin || (currentUserData && currentUserData.isStarred);
             
             const filteredEvents = allEvents.filter(e => {
                 const dayMatch = parseInt(e.day || 1) === activeDay;
@@ -270,24 +269,43 @@
                 .sort((a,b) => (a.startTime||'').localeCompare(b.startTime||''))
                 .map(e => {
                     const revealDate = e.revealTime ? new Date(e.revealTime) : null;
-                    const isLocked = revealDate && now < revealDate && e.category !== 'serve';
+                    const isTimeLocked = revealDate && now < revealDate;
                     const isServe = e.category === 'serve';
                     
-                    // Simple time display from full ISO string
+                    // Logic: Locked events are "Classified" for attendees, but visible (with warning) for Admins/Starred
+                    const shouldBlur = !isServe && isTimeLocked;
+                    const canSeeLocked = shouldBlur && hasPrivilege;
+                    const totallyHidden = shouldBlur && !hasPrivilege;
+
                     const startTimeDisplay = e.startTime ? new Date(e.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'TBD';
 
+                    let cardClass = `p-6 rounded-3xl border shadow-sm reveal-anim `;
+                    if (isServe) cardClass += 'serve-card border-blue-100';
+                    else if (canSeeLocked) cardClass += 'locked-privileged';
+                    else cardClass += 'bg-white border-slate-100';
+
                     return `
-                        <div class="p-6 rounded-3xl border shadow-sm reveal-anim ${isServe ? 'serve-card border-blue-100' : 'bg-white border-slate-100'}">
+                        <div class="${cardClass}">
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${isServe ? 'serve-tag' : 'bg-blue-50 text-blue-600'}">
-                                    ${startTimeDisplay} ${isServe ? '• SERVE' : ''}
-                                </span>
-                                ${isLocked ? '<span>🔒</span>' : ''}
+                                <div class="flex items-center">
+                                    <span class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${isServe ? 'serve-tag' : 'bg-blue-50 text-blue-600'}">
+                                        ${startTimeDisplay} ${isServe ? '• SERVE' : ''}
+                                    </span>
+                                    ${canSeeLocked ? '<span class="locked-tag">LOCKED FOR ATTENDEES</span>' : ''}
+                                </div>
+                                ${totallyHidden ? '<span>🔒</span>' : ''}
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mt-3">${isLocked ? '<span class="text-slate-200 italic">Classified</span>' : e.name}</h3>
+                            
+                            <h3 class="text-xl font-black text-slate-800 mt-3">
+                                ${totallyHidden ? '<span class="text-slate-200 italic">Classified</span>' : e.name}
+                            </h3>
+                            
                             <div class="flex flex-col mt-2">
-                                <span class="text-xs text-slate-400 font-bold">${isLocked ? '???' : (e.location || 'TBD')}</span>
+                                <span class="text-xs text-slate-400 font-bold">
+                                    ${totallyHidden ? '???' : (e.location || 'TBD')}
+                                </span>
                                 ${isServe && e.team ? `<span class="text-[10px] text-blue-500 font-black uppercase mt-1">Team: ${e.team}</span>` : ''}
+                                ${canSeeLocked ? `<span class="text-[9px] text-amber-600 font-bold mt-1">Reveals: ${new Date(e.revealTime).toLocaleString()}</span>` : ''}
                             </div>
                         </div>
                     `;
@@ -311,6 +329,7 @@
             document.getElementById('attendee-widgets').classList.toggle('hidden', isAdmin);
             document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
             document.getElementById('serve-toggle-wrapper').classList.toggle('hidden', !(isAdmin || member.isStarred));
+            renderSchedule(); // Refresh schedule visibility based on new role
         }
 
         document.getElementById('btn-enter').onclick = () => {
@@ -331,7 +350,6 @@
             
             document.getElementById('gateway-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'block';
-            renderSchedule();
         };
 
         window.toggleMemberStar = async (id, currentState) => {
@@ -346,14 +364,14 @@
         function openMemberForm(m = null) {
             modal.show(m ? "Edit Member" : "New Member", `
                 <div class="space-y-4 text-left">
-                    <div><label class="admin-label">Full Name</label><input id="f-name" class="input-pill" placeholder="Identity" value="${m?.name || ''}"></div>
+                    <div><label class="admin-label">Full Name</label><input id="f-name" class="input-pill" value="${m?.name || ''}"></div>
                     <div class="grid grid-cols-2 gap-3">
-                        <div><label class="admin-label">Tribe</label><input id="f-tribe" class="input-pill" placeholder="Tribe Name" value="${m?.tribe || ''}"></div>
-                        <div><label class="admin-label">Housing</label><input id="f-apt" class="input-pill" placeholder="Apt #" value="${m?.apt || ''}"></div>
+                        <div><label class="admin-label">Tribe</label><input id="f-tribe" class="input-pill" value="${m?.tribe || ''}"></div>
+                        <div><label class="admin-label">Housing</label><input id="f-apt" class="input-pill" value="${m?.apt || ''}"></div>
                     </div>
                     <div>
                         <label class="admin-label">Glimpse Buddy Notes</label>
-                        <textarea id="f-buddy" class="input-pill h-24 py-3" placeholder="Buddy info or specific notes...">${m?.buddyNotes || ''}</textarea>
+                        <textarea id="f-buddy" class="input-pill h-24 py-3">${m?.buddyNotes || ''}</textarea>
                     </div>
                 </div>
             `, `
@@ -362,15 +380,15 @@
             `, () => document.getElementById('btn-manage-members').click());
 
             document.getElementById('btn-submit-member').onclick = async () => {
-                const nameInput = document.getElementById('f-name').value.trim();
+                const nameVal = document.getElementById('f-name').value.trim();
                 const data = { 
-                    name: nameInput, 
+                    name: nameVal, 
                     tribe: document.getElementById('f-tribe').value, 
                     apt: document.getElementById('f-apt').value,
                     buddyNotes: document.getElementById('f-buddy').value,
                     isStarred: m?.isStarred || false
                 };
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m?.id || nameInput.toLowerCase().replace(/\s+/g, '-')), data);
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m?.id || nameVal.toLowerCase().replace(/\s+/g, '-')), data);
                 document.getElementById('btn-manage-members').click();
             };
             if(m) document.getElementById('btn-del-member').onclick = async () => { 
@@ -383,15 +401,9 @@
             const showSpecifics = (cat) => {
                 const specDiv = document.getElementById('category-specifics');
                 if (cat === 'serve') {
-                    specDiv.innerHTML = `
-                        <label class="admin-label">Team Name (Custom Type)</label>
-                        <input id="e-team" class="input-pill" placeholder="e.g. Media, Cafe, Worship" value="${e?.team || ''}">
-                    `;
+                    specDiv.innerHTML = `<label class="admin-label">Team Name</label><input id="e-team" class="input-pill" value="${e?.team || ''}">`;
                 } else {
-                    specDiv.innerHTML = `
-                        <label class="admin-label">Reveal Time (Locked until then)</label>
-                        <input id="e-reveal" type="datetime-local" class="input-pill" value="${e?.revealTime || ''}">
-                    `;
+                    specDiv.innerHTML = `<label class="admin-label">Reveal Time (Sync with Date)</label><input id="e-reveal" type="datetime-local" class="input-pill" value="${e?.revealTime || ''}">`;
                 }
             };
 
@@ -407,24 +419,12 @@
                     </div>
                     <div id="category-specifics"></div>
                     <div><label class="admin-label">Location</label><input id="e-loc" class="input-pill" value="${e?.location || ''}"></div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="col-span-2">
-                            <label class="admin-label">Event Day (UI Filter)</label>
-                            <select id="e-day" class="input-pill">
-                                <option value="1" ${e?.day == 1 ? 'selected' : ''}>Day 1</option>
-                                <option value="2" ${e?.day == 2 ? 'selected' : ''}>Day 2</option>
-                            </select>
-                        </div>
-                        <div class="col-span-2">
-                            <label class="admin-label">Start Date & Time</label>
-                            <input id="e-start" type="datetime-local" class="input-pill" value="${e?.startTime || ''}">
-                        </div>
-                        <div class="col-span-2">
-                            <label class="admin-label">End Date & Time (Auto-Delete after this)</label>
-                            <input id="e-end" type="datetime-local" class="input-pill" value="${e?.endTime || ''}">
-                        </div>
+                    <div>
+                        <label class="admin-label">Event Day</label>
+                        <select id="e-day" class="input-pill"><option value="1" ${e?.day == 1 ? 'selected' : ''}>Day 1</option><option value="2" ${e?.day == 2 ? 'selected' : ''}>Day 2</option></select>
                     </div>
+                    <div><label class="admin-label">Start Time</label><input id="e-start" type="datetime-local" class="input-pill" value="${e?.startTime || ''}"></div>
+                    <div><label class="admin-label">End Time (Auto-Delete)</label><input id="e-end" type="datetime-local" class="input-pill" value="${e?.endTime || ''}"></div>
                 </div>`, `
                 <button id="btn-submit-event" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold">Save</button>
                 ${e ? `<button id="btn-del-event" class="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold">Delete</button>` : ''}
@@ -444,15 +444,11 @@
                     startTime: document.getElementById('e-start').value,
                     endTime: document.getElementById('e-end').value,
                 };
-                if (cat === 'serve') {
-                    data.team = document.getElementById('e-team').value;
-                } else {
-                    data.revealTime = document.getElementById('e-reveal').value;
-                }
+                if (cat === 'serve') data.team = document.getElementById('e-team').value;
+                else data.revealTime = document.getElementById('e-reveal').value;
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e?.id || Date.now().toString()), data);
                 document.getElementById('btn-manage-events').click();
             };
-
             if(e) document.getElementById('btn-del-event').onclick = async () => { 
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id)); 
                 document.getElementById('btn-manage-events').click(); 
@@ -460,27 +456,21 @@
         }
 
         document.getElementById('btn-manage-members').onclick = () => {
-            const list = allMembers
-                .sort((a,b) => a.name.localeCompare(b.name))
-                .map(m => `
-                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
-                        <div class="flex items-center gap-2">
-                            <button onclick="toggleMemberStar('${m.id}', ${m.isStarred || false})" class="text-lg transition-all ${m.isStarred ? 'star-active' : 'star-inactive'}">
-                                ${m.isStarred ? '★' : '☆'}
-                            </button>
-                            <div class="text-sm font-bold text-slate-800">${m.name}</div>
-                        </div>
-                        <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
-                    </div>`).join('');
-            modal.show("Members", `<button id="m-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Member</button><div class="pb-4">${list}</div>`);
+            const list = allMembers.sort((a,b) => a.name.localeCompare(b.name)).map(m => `
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2">
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleMemberStar('${m.id}', ${m.isStarred || false})" class="text-lg ${m.isStarred ? 'star-active' : 'star-inactive'}">${m.isStarred ? '★' : '☆'}</button>
+                        <div class="text-sm font-bold text-slate-800">${m.name}</div>
+                    </div>
+                    <button onclick="editMember('${m.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button>
+                </div>`).join('');
+            modal.show("Members", `<button id="m-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Member</button>${list}`);
             document.getElementById('m-add').onclick = () => openMemberForm();
         };
 
         document.getElementById('btn-manage-events').onclick = () => {
-            const list = allEvents
-                .sort((a,b) => a.day - b.day || (a.startTime||'').localeCompare(b.startTime||''))
-                .map(e => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2"><div class="text-sm font-bold text-slate-800">${e.name} (D${e.day||1})</div><button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button></div>`).join('');
-            modal.show("Events", `<button id="e-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Event</button><div class="pb-4">${list}</div>`);
+            const list = allEvents.sort((a,b) => a.day - b.day || (a.startTime||'').localeCompare(b.startTime||'')).map(e => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl mb-2"><div class="text-sm font-bold text-slate-800">${e.name} (D${e.day})</div><button onclick="editEvent('${e.id}')" class="text-blue-600 text-[10px] font-black uppercase">Edit</button></div>`).join('');
+            modal.show("Events", `<button id="e-add" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold mb-4">+ Add Event</button>${list}`);
             document.getElementById('e-add').onclick = () => openEventForm();
         };
 
@@ -495,14 +485,13 @@
 
         document.getElementById('btn-close-modal').onclick = () => modal.hide();
         document.getElementById('btn-logout').onclick = () => location.reload();
-        document.getElementById('tribe-card').onclick = () => { if(currentUserData) showGrouping('tribe', currentUserData.tribe); };
-        document.getElementById('apt-card').onclick = () => { if(currentUserData) showGrouping('apt', currentUserData.apt); };
+        document.getElementById('tribe-card').onclick = () => showGrouping('tribe', currentUserData.tribe);
+        document.getElementById('apt-card').onclick = () => showGrouping('apt', currentUserData.apt);
 
         function showGrouping(type, value) {
             if(!value || value === "Unassigned") return;
             const matches = allMembers.filter(m => m[type] === value);
-            const listHtml = matches.map(m => `<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-2"><div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-xs shadow-sm">👤</div><div class="text-sm font-bold text-slate-800">${m.name}</div></div>`).join('');
-            modal.show(`${type === 'tribe' ? 'Tribe' : 'Apt'}: ${value}`, `<div class="pt-2">${listHtml || '<p class="text-slate-400">Nobody else here yet.</p>'}</div>`);
+            modal.show(`${type === 'tribe' ? 'Tribe' : 'Apt'}: ${value}`, matches.map(m => `<div class="p-3 bg-slate-50 rounded-xl mb-2 text-sm font-bold">${m.name}</div>`).join(''));
         }
 
         init();
